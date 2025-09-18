@@ -1,0 +1,46 @@
+# GitHub Actions
+
+name: build
+
+# Controls when the workflow will run 
+on: 
+    # Triggers the the workflow on push or pull request events
+    pull_request:
+        types: [opened, synchronize, reopened]
+    # Allows to run the workflow manually 
+    workflow_dispatch:
+
+# Jobs that should be executed during the workflow run
+jobs:
+    default:
+        name: Default tests
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                fetch-depth: 0 
+
+            - name: Setup Python
+              uses: actions/checkout@v4
+              with:
+                python-version: 3.9
+
+            - name: Install Dev requirements
+              run: pip install -r dev_requirements.txt
+
+            - name: Install Lib requirements
+              run: pip install -e .
+
+            # Run linters
+            - name: Run linters
+              uses: wearerequired/lint-action@v2.3.0
+              with:
+                auto-fix: true
+                black: true
+                black_args: --config .config/black
+                flake8: true
+                flake8_args: --config .config/flake8
+
+            # Run class test
+            - name: Run tests
+              run: pytest

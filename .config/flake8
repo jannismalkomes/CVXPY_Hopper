@@ -1,0 +1,9 @@
+[flake]
+max-line-length = 120
+exclude = .git,
+    __pycache__,
+    venv,
+    old,
+    build,
+    dist,
+    test

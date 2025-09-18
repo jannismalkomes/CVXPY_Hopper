@@ -1,0 +1,29 @@
+{
+  "name": "base-dev-container",
+  "build": {
+    // Path is relative to the devcontainer.json file.
+    "dockerfile": "Dockerfile"
+  },
+  "runArgs": [
+    "--env-file",
+    ".devcontainer/devcontainer.env"
+  ],
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/python:1": {}
+  },
+  "onCreateCommand": "sh .devcontainer/setup.sh",
+  "waitFor": "onCreateCommand",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.black-formatter",
+        "ms-python.flake8",
+        "streetsidesoftware.code-spell-checker",
+        "redhat.vscode-yaml",
+        "ms-toolsai.jupyter",
+        "ms-python.python"
+      ]
+    }
+  }
+}
