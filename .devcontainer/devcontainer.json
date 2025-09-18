@@ -1,5 +1,5 @@
 {
-  "name": "base-dev-container",
+  "name": "Hopper-CVXPY-Trajectory-Generator-dev-container",
   "build": {
     // Path is relative to the devcontainer.json file.
     "dockerfile": "Dockerfile"
@@ -12,6 +12,9 @@
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/devcontainers/features/python:1": {}
   },
+  "containerEnv": {
+    "PIP_BREAK_SYSTEM_PACKAGES": "1"
+  },
   "onCreateCommand": "sh .devcontainer/setup.sh",
   "waitFor": "onCreateCommand",
   "customizations": {
@@ -20,8 +23,6 @@
         "ms-python.black-formatter",
         "ms-python.flake8",
         "streetsidesoftware.code-spell-checker",
-        "redhat.vscode-yaml",
-        "ms-toolsai.jupyter",
         "ms-python.python"
       ]
     }

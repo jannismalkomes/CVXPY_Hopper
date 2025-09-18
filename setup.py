@@ -1,15 +1,13 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="Base set-up",
+    name="Hopper-CVXPY-Trajectory-Generator",
     version="0.0.1",
-    description="A python module wrapping the Space Team Aachen STAHR mission analysis tools.",
+    description="Trajectory generator using CVXPY and CVXPYgen",
     author="Jannis Malkomes",
-    packages=find_packages(include=["mission_analysis"]),
+    packages=find_packages(include=["src"]),
     install_requires=[
-        "pandas",
-        "numpy",
-        "scipy",
-        "tabulate"
+        "cvxpy",
+        "cvxpygen"
     ]
 )

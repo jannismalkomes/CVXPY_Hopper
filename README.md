@@ -1,3 +1,3 @@
-# Base set-up
+# CVXPY Trajectory Generator for Hopper
 
-Basic git repository set-up with folder structure and set-up files.
+Trajectory generator using CVXPY and CVXPYgen.
