@@ -9,6 +9,7 @@ setup(
     install_requires=[
         "cvxpy",
         "cvxpygen",
-        "matplotlib"
+        "matplotlib",
+        "ipykernel"
     ]
 )
