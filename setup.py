@@ -8,6 +8,7 @@ setup(
     packages=find_packages(include=["src"]),
     install_requires=[
         "cvxpy",
-        "cvxpygen"
+        "cvxpygen",
+        "matplotlib"
     ]
 )

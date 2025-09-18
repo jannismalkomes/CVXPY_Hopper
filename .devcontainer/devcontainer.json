@@ -9,7 +9,10 @@
     ".devcontainer/devcontainer.env"
   ],
   "features": {
-    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/git:1": {
+      "installTools": true,
+      "packages": "ipykernel"
+    },
     "ghcr.io/devcontainers/features/python:1": {}
   },
   "containerEnv": {
@@ -23,7 +26,8 @@
         "ms-python.black-formatter",
         "ms-python.flake8",
         "streetsidesoftware.code-spell-checker",
-        "ms-python.python"
+        "ms-python.python",
+        "ms-toolsai.jupyter"
       ]
     }
   }
