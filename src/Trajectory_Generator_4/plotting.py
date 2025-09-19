@@ -62,15 +62,15 @@ class TrajectoryPlotter:
         t = np.linspace(0, tf, N)
 
         # Extract positions and velocities
-        pos = x[0:3, :]  # [altitude, cross_range, down_range]
+        pos = x[0:3, :]  # [x, y, z] coordinates
         vel = x[3:6, :]
 
-        # Convert positions to [x, y, z] format for plotting
-        # Original: [altitude, cross_range, down_range]
-        # Plot: [down_range, cross_range, altitude]
-        x_pos = pos[2, :]  # down_range
-        y_pos = pos[1, :]  # cross_range
-        z_pos = pos[0, :]  # altitude
+        # Convert positions to plotting coordinates
+        # New z-up system: [x, y, z] where z is height
+        # Plot coordinates: [x, y, z] for 3D visualization
+        x_pos = pos[0, :]  # x-coordinate (east-west)
+        y_pos = pos[1, :]  # y-coordinate (north-south)
+        z_pos = pos[2, :]  # z-coordinate (altitude/height)
 
         # Compute thrust vectors (normalized by mass for visualization)
         if len(m) == 1:
@@ -146,8 +146,8 @@ class TrajectoryPlotter:
             ax.plot_surface(xx, yy, zz, alpha=0.3, color=surface_color)
 
         # Labels and title
-        ax.set_xlabel('Down-range (m)')
-        ax.set_ylabel('Cross-range (m)')
+        ax.set_xlabel('X Position (m)')
+        ax.set_ylabel('Y Position (m)')
         ax.set_zlabel('Altitude (m)')
 
         title = f'GFOLD 3D Trajectory (Flight Time: {tf:.1f}s)'
@@ -175,7 +175,8 @@ class TrajectoryPlotter:
 
     def plot_trajectory_planes(self, x: np.ndarray, u: np.ndarray, m: np.ndarray,
                                tf: float, dark_theme: bool = False,
-                               filename: Optional[str] = None) -> str:
+                               filename: Optional[str] = None,
+                               gravity: Optional[np.ndarray] = None) -> str:
         """
         Create trajectory projections on XY, XZ, and YZ planes.
 
@@ -236,25 +237,25 @@ class TrajectoryPlotter:
             # Use consistent aspect ratio for all subplots instead of equal
             ax.set_aspect('auto')
 
-        # XY plane (Down-range vs Cross-range)
+        # XY plane (X vs Y horizontal projection)
         ax1 = fig.add_subplot(gs[0, 0])
         plot_trajectory_projection(ax1, x_pos, y_pos,
-                                   'Down-range (m)', 'Cross-range (m)',
+                                   'X Position (m)', 'Y Position (m)',
                                    'XY Plane (Top View)')
 
-        # XZ plane (Down-range vs Altitude)
+        # XZ plane (X vs Altitude)
         ax2 = fig.add_subplot(gs[0, 1])
         plot_trajectory_projection(ax2, x_pos, z_pos,
-                                   'Down-range (m)', 'Altitude (m)',
+                                   'X Position (m)', 'Altitude (m)',
                                    'XZ Plane (Side View)')
 
-        # YZ plane (Cross-range vs Altitude)
+        # YZ plane (Y vs Altitude)
         ax3 = fig.add_subplot(gs[0, 2])
         plot_trajectory_projection(ax3, y_pos, z_pos,
-                                   'Cross-range (m)', 'Altitude (m)',
+                                   'Y Position (m)', 'Altitude (m)',
                                    'YZ Plane (Front View)')
 
-        # Combined velocity and acceleration magnitude plot
+        # Combined velocity and acceleration components plot
         ax4 = fig.add_subplot(gs[1, :])
 
         # Calculate velocity magnitude
@@ -263,36 +264,54 @@ class TrajectoryPlotter:
         # Plot velocity magnitude on primary y-axis
         line1 = ax4.plot(t, vel_mag, linewidth=2,
                          color='orange' if dark_theme else 'blue',
-                         label='Velocity')
+                         label='Velocity Magnitude')
         ax4.set_xlabel('Time (s)')
         ax4.set_ylabel('Velocity Magnitude (m/s)',
                        color='orange' if dark_theme else 'blue')
         ax4.tick_params(
             axis='y', labelcolor='orange' if dark_theme else 'blue')
 
-        # Create secondary y-axis for acceleration
+        # Create secondary y-axis for acceleration components
         ax4_acc = ax4.twinx()
 
         if u is not None:
-            # Calculate total acceleration magnitude (thrust + gravity)
-            g_vec = np.array([0, 0, -9.80665])  # Gravity vector
+            # Calculate total acceleration components (thrust + gravity)
+            g_vec = gravity if gravity is not None else np.array(
+                [0, 0, -9.80665])  # Default gravity vector
             # Add gravity to thrust acceleration
             acc_total = u + g_vec.reshape(-1, 1)
-            acc_mag = np.sqrt(acc_total[0, :]**2 +
-                              acc_total[1, :]**2 + acc_total[2, :]**2)
 
-            line2 = ax4_acc.plot(t, acc_mag, linewidth=2,
-                                 color='red' if dark_theme else 'darkred',
-                                 label='Acceleration')
-            ax4_acc.set_ylabel('Acceleration Magnitude (m/s²)',
-                               color='red' if dark_theme else 'darkred')
+            # Plot directional acceleration components
+            acc_colors = {
+                'x': 'red' if dark_theme else 'darkred',
+                'y': 'green' if dark_theme else 'darkgreen',
+                'z': 'blue' if dark_theme else 'darkblue'
+            }
+
+            line2_x = ax4_acc.plot(t, acc_total[0, :], linewidth=2,
+                                   color=acc_colors['x'], linestyle='-',
+                                   label='Acc X', alpha=0.8)
+            line2_y = ax4_acc.plot(t, acc_total[1, :], linewidth=2,
+                                   color=acc_colors['y'], linestyle='--',
+                                   label='Acc Y', alpha=0.8)
+            line2_z = ax4_acc.plot(t, acc_total[2, :], linewidth=2,
+                                   color=acc_colors['z'], linestyle='-.',
+                                   label='Acc Z', alpha=0.8)
+
+            line2 = line2_x + line2_y + line2_z
+            ax4_acc.set_ylabel('Acceleration Components (m/s²)',
+                               color='black' if not dark_theme else 'white')
             ax4_acc.tick_params(
-                axis='y', labelcolor='red' if dark_theme else 'darkred')
+                axis='y', labelcolor='black' if not dark_theme else 'white')
+
+            # Add horizontal line at zero acceleration for reference
+            ax4_acc.axhline(y=0, color='gray', linestyle=':',
+                            alpha=0.5, linewidth=1)
         else:
             # If no control data, show zero acceleration
             line2 = ax4_acc.plot(t, np.zeros_like(t), linewidth=2, color='gray',
                                  label='Acceleration (No Data)')
-            ax4_acc.set_ylabel('Acceleration Magnitude (m/s²)', color='gray')
+            ax4_acc.set_ylabel('Acceleration Components (m/s²)', color='gray')
             ax4_acc.tick_params(axis='y', labelcolor='gray')
 
         # Add legend for both lines
@@ -300,7 +319,7 @@ class TrajectoryPlotter:
         labels = [l.get_label() for l in lines]
         ax4.legend(lines, labels, loc='upper left')
 
-        ax4.set_title('Velocity and Acceleration Profiles')
+        ax4.set_title('Velocity Magnitude and Acceleration Components')
         ax4.grid(True, alpha=0.3)
 
         # Add overall title
@@ -327,7 +346,7 @@ class TrajectoryPlotter:
         return filepath
 
     def plot_all_trajectories(self, x: np.ndarray, u: np.ndarray, m: np.ndarray,
-                              tf: float) -> list:
+                              tf: float, gravity: Optional[np.ndarray] = None) -> list:
         """
         Generate all trajectory plots (3D and planes, both themes).
 
@@ -348,13 +367,14 @@ class TrajectoryPlotter:
         saved_files.append(self.plot_3d_trajectory(
             x, u, m, tf, dark_theme=True))
         saved_files.append(self.plot_trajectory_planes(
-            x, u, m, tf, dark_theme=False))
+            x, u, m, tf, dark_theme=False, gravity=gravity))
         saved_files.append(self.plot_trajectory_planes(
-            x, u, m, tf, dark_theme=True))
+            x, u, m, tf, dark_theme=True, gravity=gravity))
 
-        print(f"\nGenerated {len(saved_files)} trajectory plots:")
-        for filepath in saved_files:
-            print(f"  - {filepath}")
+        # print(f"\nGenerated {len(saved_files)} trajectory plots:")
+        # for filepath in saved_files:
+        #     print(f"  - {filepath}")
+        print("\n✓ Problem 4 plot export completed successfully!")
 
         return saved_files
 

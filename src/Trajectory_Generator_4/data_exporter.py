@@ -402,7 +402,7 @@ class DataExporter:
             bool: True if export successful, False otherwise
         """
         try:
-            print("\nExporting Problem 4 data...")
+            # print("\nExporting Problem 4 data...")
 
             # Ensure output directory exists
             os.makedirs(self.output_dir, exist_ok=True)
@@ -444,7 +444,7 @@ class DataExporter:
             basic_df = pd.DataFrame(trajectory_data)
             basic_filename = f'{self.output_dir}/{filename_prefix}_trajectory.csv'
             basic_df.to_csv(basic_filename, index=False)
-            print(f"✓ Basic trajectory data: {basic_filename}")
+            # print(f"✓ Basic trajectory data: {basic_filename}")
 
             # 2. Export solver statistics
             if 'solver_stats' in solution_data:
@@ -468,7 +468,7 @@ class DataExporter:
                 stats_df = pd.DataFrame([stats_data])
                 stats_filename = f'{self.output_dir}/{filename_prefix}_solver_stats.csv'
                 stats_df.to_csv(stats_filename, index=False)
-                print(f"✓ Solver statistics: {stats_filename}")
+                # print(f"✓ Solver statistics: {stats_filename}")
 
             # 3. Export detailed trajectory with computed quantities
             detailed_data = {
@@ -482,6 +482,7 @@ class DataExporter:
                 'acceleration_x': u[0, :] + self.params.g[0],
                 'acceleration_y': u[1, :] + self.params.g[1],
                 'acceleration_z': u[2, :] + self.params.g[2],
+                'acceleration_magnitude': np.linalg.norm(u + self.params.g.reshape(-1, 1), axis=0),
             }
 
             if z is not None:
@@ -489,13 +490,14 @@ class DataExporter:
                 detailed_data.update({
                     'log_mass': z[0, :],
                     'mass': mass_trajectory,
-                    'thrust_to_weight': np.linalg.norm(u, axis=0) / (mass_trajectory * abs(self.params.g[0]))
+                    # Use z-component of gravity
+                    'thrust_to_weight': np.linalg.norm(u, axis=0) / (mass_trajectory * abs(self.params.g[2]))
                 })
 
             detailed_df = pd.DataFrame(detailed_data)
             detailed_filename = f'{self.output_dir}/{filename_prefix}_detailed.csv'
             detailed_df.to_csv(detailed_filename, index=False)
-            print(f"✓ Detailed trajectory: {detailed_filename}")
+            # print(f"✓ Detailed trajectory: {detailed_filename}")
 
             # 4. Export high-resolution interpolated data
             n_interp = 1000
@@ -511,7 +513,7 @@ class DataExporter:
             interp_df = pd.DataFrame(interp_data)
             interp_filename = f'{self.output_dir}/{filename_prefix}_interpolated.csv'
             interp_df.to_csv(interp_filename, index=False)
-            print(f"✓ Interpolated trajectory: {interp_filename}")
+            # print(f"✓ Interpolated trajectory: {interp_filename}")
 
             # 5. Export simplified trajectory (position, velocity, acceleration only)
             simplified_data = {
@@ -526,20 +528,20 @@ class DataExporter:
             simplified_df = pd.DataFrame(simplified_data)
             simplified_filename = f'{self.output_dir}/{filename_prefix}_simple.csv'
             simplified_df.to_csv(simplified_filename, index=False)
-            print(f"✓ Simplified trajectory: {simplified_filename}")
+            # print(f"✓ Simplified trajectory: {simplified_filename}")
 
-            print(f"\n✓ Problem 4 data export completed successfully!")
-            print(f"  Output directory: {self.output_dir}/")
-            print(f"  Files generated:")
-            print(f"    - {filename_prefix}_trajectory.csv (basic data)")
-            print(
-                f"    - {filename_prefix}_solver_stats.csv (optimization statistics)")
-            print(
-                f"    - {filename_prefix}_detailed.csv (comprehensive trajectory)")
-            print(
-                f"    - {filename_prefix}_interpolated.csv (high-resolution data)")
-            print(
-                f"    - {filename_prefix}_simple.csv (position/velocity/acceleration)")
+            print(f"✓ Problem 4 data export completed successfully!")
+            # print(f"  Output directory: {self.output_dir}/")
+            # print(f"  Files generated:")
+            # print(f"    - {filename_prefix}_trajectory.csv (basic data)")
+            # print(
+            #     f"    - {filename_prefix}_solver_stats.csv (optimization statistics)")
+            # print(
+            #     f"    - {filename_prefix}_detailed.csv (comprehensive trajectory)")
+            # print(
+            #     f"    - {filename_prefix}_interpolated.csv (high-resolution data)")
+            # print(
+            #     f"    - {filename_prefix}_simple.csv (position/velocity/acceleration)")
 
             return True
 

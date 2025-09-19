@@ -47,7 +47,7 @@ class HopperParameters:
         self.m_wet = self.m_dry + self.m_fuel  # Total wet mass [kg]
 
         # Propulsion system parameters
-        self.T_max = 4000                    # Maximum thrust [N]
+        self.T_max = 2000                    # Maximum thrust [N]
         self.throt = [0.1, 1.0]             # Throttle range [min, max]
         self.Isp = 203.94                   # Specific impulse [s]
         self.alpha = 1 / (self.Isp * self.g0)  # Fuel consumption parameter
@@ -56,23 +56,30 @@ class HopperParameters:
 
         # Operational constraints
         # Maximum structural acceleration [g]
-        self.G_max = 100
-        self.V_max = 200                      # Maximum velocity [m/s]
+        self.G_max = 3
+        self.V_max = 5                      # Maximum velocity [m/s]
         self.y_gs = np.radians(30)          # Glide slope cone angle [rad]
-        self.p_cs = np.radians(15)          # Thrust pointing constraint [rad]
+        self.p_cs = np.radians(45)          # Thrust pointing constraint [rad]
 
-        # Environmental parameters (Mars-like)
-        self.g = np.array([-9.81, 0, 0])    # Gravity vector [m/s²]
-        # Planetary angular velocity [rad/s]
-        self.w = np.array([2.53e-5, 0, 6.62e-5])
+        # Environmental parameters (Earth with z-up)
+        # Gravity vector [m/s²] - z is down
+        self.g = np.array([0, 0, -9.80665])
+        # Planetary angular velocity [rad/s] - updated for z-up coordinate system
+        # For Earth: rotation axis is approximately aligned with z-axis (North pole)
+        # Earth's rotation rate: 7.2921159e-5 rad/s
+        # Rotation about z-axis (vertical)
+        self.w = np.array([0, 0, 7.2921159e-5])
 
         # Initial conditions
-        self.r_initial = np.array([0, 5, 5])    # Initial position [m]
+        # Initial position [x, y, z] where z is height
+        self.r_initial = np.array([0, 0, 10])
         self.v_initial = np.array([0, 0, 0])     # Initial velocity [m/s]
 
         # Target conditions
-        self.r_target = np.array([0, 0, 0])      # Target landing position [m]
-        self.v_target = np.array([0, 0, 0])     # Target landing velocity [m/s]
+        # Target landing position [x, y, z] where z=0 is ground
+        self.r_target = np.array([0, 0, 0])
+        # Target landing velocity [m/s]
+        self.v_target = np.array([0, 0, 0])
 
         # Derived parameters
         self._compute_derived_parameters()
@@ -88,8 +95,8 @@ class HopperParameters:
                              [w_vec[2], 0, -w_vec[0]],
                              [-w_vec[1], w_vec[0], 0]])
 
-        # # Glide slope constraint vector
-        # self.c = self.e(0) / np.tan(self.y_gs)
+        # # Glide slope constraint vector - changed to z-direction
+        # self.c = self.e(2) / np.tan(self.y_gs)
 
         # System matrices for dynamics
         self.A = np.zeros((6, 6))
@@ -177,17 +184,17 @@ class GFOLDTrajectoryGenerator:
         x0 = np.concatenate([r0, self.params.v_initial])
         constraints += [x[0:3, 0] == x0[0:3]]  # Initial position
         constraints += [x[3:6, 0] == x0[3:6]]  # Initial velocity
-
         # Final conditions
         constraints += [x[3:6, self.N-1] ==
                         self.params.v_target]  # Final velocity
-        constraints += [s[0, self.N-1] == 0]  # No thrust at landing
+        # No thrust at landing
+        constraints += [s[0, self.N-1] == 0]
 
         # Initial and final thrust direction constraints
-        # Initial thrust direction
-        constraints += [u[:, 0] == s[0, 0] * np.array([1, 0, 0])]
+        # Initial thrust direction - thrust upward to counteract gravity
+        constraints += [u[:, 0] == s[0, 0] * np.array([0, 0, 1])]
         constraints += [u[:, self.N-1] == s[0, self.N-1] *
-                        np.array([1, 0, 0])]  # Final thrust direction
+                        np.array([0, 0, 1])]  # Final thrust direction
 
         # Initial mass constraint
         constraints += [z[0, 0] == cp.log(self.params.m_wet)]
@@ -201,9 +208,10 @@ class GFOLDTrajectoryGenerator:
                             (self.dt / 2) * (x[3:6, n+1] + x[3:6, n])]
 
             # # Glideslope constraint (keep within landing cone)
+            # # Changed to use z as height coordinate
             # pos_diff = x[0:3, n] - self.params.r_target
-            # constraints += [cp.norm(pos_diff[1:3]) <=
-            #                self.params.c[0] * (x[0, n] - self.params.r_target[0])]
+            # constraints += [cp.norm(pos_diff[0:2]) <=  # x,y components
+            #                np.tan(self.params.y_gs) * (x[2, n] - self.params.r_target[2])]  # z component
 
             # Velocity magnitude constraint
             constraints += [cp.norm(x[3:6, n]) <= self.params.V_max]
@@ -216,7 +224,8 @@ class GFOLDTrajectoryGenerator:
             constraints += [cp.norm(u[:, n]) <= s[0, n]]
 
             # Thrust pointing constraint (thrust vector within cone)
-            constraints += [u[0, n] >= np.cos(self.params.p_cs) * s[0, n]]
+            # Changed to z-component for upward thrust
+            constraints += [u[2, n] >= np.cos(self.params.p_cs) * s[0, n]]
 
             # Thrust bounds (convex approximation of mass-normalized thrust)
             if n > 0:
@@ -231,7 +240,8 @@ class GFOLDTrajectoryGenerator:
                 constraints += [z[0, n] <= z1]
 
         # Altitude constraint (stay above surface except at landing)
-        constraints += [x[0, 0:self.N-1] >= 0]
+        # Changed to z-coordinate for height
+        constraints += [x[2, 0:self.N-1] >= 0]
 
         return constraints
 
@@ -312,7 +322,7 @@ class GFOLDTrajectoryGenerator:
             print(f"Objective value (log final mass): {obj_value:.6f}")
             print(f"Final mass: {mass_trajectory[-1]:.2f} kg")
             print(f"Fuel consumed: {result['fuel_consumed']:.2f} kg")
-            print(f"Final position: {x.value[0:3, -1]}")
+            print(f"Final position [x, y, z]: {x.value[0:3, -1]}")
             print(f"Solve time: {solve_time:.3f} s")
         else:
             print("Problem 4 failed to solve!")
@@ -340,7 +350,8 @@ class GFOLDTrajectoryGenerator:
 
             # Generate all plots
             plotter = TrajectoryPlotter("results/images")
-            saved_files = plotter.plot_all_trajectories(x, u, m, tf)
+            saved_files = plotter.plot_all_trajectories(
+                x, u, m, tf, gravity=self.params.g)
 
             return saved_files
 
@@ -380,7 +391,7 @@ if __name__ == "__main__":
         #     (generator.params.alpha * generator.params.r1)
 
         # To be replaced with optimal flight time determination script
-        tf_opt = 10
+        tf_opt = 120
 
         # Set number of discretization points
         generator.N = int(tf_opt / generator.dt)
