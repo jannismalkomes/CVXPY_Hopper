@@ -28,6 +28,7 @@ from typing import Tuple, Optional, Dict, Any
 from scipy import signal
 from scipy.interpolate import interp1d
 import pandas as pd
+from plotting import TrajectoryPlotter, plot_gfold_results
 
 
 class HopperParameters:
@@ -468,20 +469,48 @@ class GFOLDTrajectoryGenerator:
                 f = interp1d(time_vec, trajectory_data[key], kind='linear')
                 interpolated_data[key] = f(t_new)
 
-            # Create directory if it doesn't exist
-            os.makedirs('database/trajectories', exist_ok=True)
+            # Create results directory structure
+            os.makedirs('results/database', exist_ok=True)
 
             # Save trajectory data using pandas
             df_interp = pd.DataFrame(interpolated_data)
-            df_interp.to_csv(f'database/trajectories/{filename}', index=False)
+            df_interp.to_csv(f'results/database/{filename}', index=False)
 
             print(
-                f"Trajectory data exported to database/trajectories/{filename}")
+                f"Trajectory data exported to results/database/{filename}")
             return True
 
         except Exception as e:
             print(f"Error exporting trajectory data: {e}")
             return False
+
+    def generate_plots(self) -> list:
+        """
+        Generate trajectory plots using the integrated plotting module.
+
+        Returns:
+            List of saved plot file paths
+        """
+        if self.last_solution is None or self.last_solution['variables']['state'] is None:
+            print("No solution data available for plotting!")
+            return []
+
+        try:
+            # Extract trajectory data
+            x = self.last_solution['variables']['state']
+            u = self.last_solution['variables']['control']
+            m = self.last_solution['mass_trajectory']
+            tf = self.last_solution['flight_time']
+
+            # Generate all plots
+            plotter = TrajectoryPlotter("results/images")
+            saved_files = plotter.plot_all_trajectories(x, u, m, tf)
+
+            return saved_files
+
+        except Exception as e:
+            print(f"Error generating plots: {e}")
+            return []
 
 
 if __name__ == "__main__":
@@ -563,12 +592,24 @@ if __name__ == "__main__":
             print(
                 f"  Velocity: [{final_vel[0]:.3f}, {final_vel[1]:.3f}, {final_vel[2]:.3f}] m/s")
 
-            # Export trajectory data
-            print(f"\nExporting trajectory data...")
+            # Export trajectory data and generate plots
+            print(f"\nExporting results...")
+
+            # Export CSV data
             if generator.export_trajectory_data("gfold_trajectory.csv"):
                 print(f"✓ Trajectory data exported successfully")
             else:
                 print(f"✗ Failed to export trajectory data")
+
+            # Generate trajectory plots
+            print(f"\nGenerating trajectory plots...")
+            plot_files = generator.generate_plots()
+            if plot_files:
+                print(f"✓ Generated {len(plot_files)} trajectory plots")
+                for plot_file in plot_files:
+                    print(f"  - {os.path.basename(plot_file)}")
+            else:
+                print(f"✗ Failed to generate plots")
 
         else:
             print("\nFAILED: GFOLD trajectory optimization failed!")
