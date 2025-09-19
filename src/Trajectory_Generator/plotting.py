@@ -254,22 +254,61 @@ class TrajectoryPlotter:
                                    'Cross-range (m)', 'Altitude (m)',
                                    'YZ Plane (Front View)')
 
-        # Velocity magnitude plot
+        # Combined velocity and acceleration magnitude plot
         ax4 = fig.add_subplot(gs[1, :])
+
+        # Calculate velocity magnitude
         vel_mag = np.sqrt(x[3, :]**2 + x[4, :]**2 + x[5, :]**2)
-        ax4.plot(t, vel_mag, linewidth=2,
-                 color='orange' if dark_theme else 'blue')
+
+        # Plot velocity magnitude on primary y-axis
+        line1 = ax4.plot(t, vel_mag, linewidth=2,
+                         color='orange' if dark_theme else 'blue',
+                         label='Velocity')
         ax4.set_xlabel('Time (s)')
-        ax4.set_ylabel('Velocity Magnitude (m/s)')
-        ax4.set_title('Velocity Profile')
+        ax4.set_ylabel('Velocity Magnitude (m/s)',
+                       color='orange' if dark_theme else 'blue')
+        ax4.tick_params(
+            axis='y', labelcolor='orange' if dark_theme else 'blue')
+
+        # Create secondary y-axis for acceleration
+        ax4_acc = ax4.twinx()
+
+        if u is not None:
+            # Calculate total acceleration magnitude (thrust + gravity)
+            g_vec = np.array([0, 0, -9.80665])  # Gravity vector
+            # Add gravity to thrust acceleration
+            acc_total = u + g_vec.reshape(-1, 1)
+            acc_mag = np.sqrt(acc_total[0, :]**2 +
+                              acc_total[1, :]**2 + acc_total[2, :]**2)
+
+            line2 = ax4_acc.plot(t, acc_mag, linewidth=2,
+                                 color='red' if dark_theme else 'darkred',
+                                 label='Acceleration')
+            ax4_acc.set_ylabel('Acceleration Magnitude (m/s²)',
+                               color='red' if dark_theme else 'darkred')
+            ax4_acc.tick_params(
+                axis='y', labelcolor='red' if dark_theme else 'darkred')
+        else:
+            # If no control data, show zero acceleration
+            line2 = ax4_acc.plot(t, np.zeros_like(t), linewidth=2, color='gray',
+                                 label='Acceleration (No Data)')
+            ax4_acc.set_ylabel('Acceleration Magnitude (m/s²)', color='gray')
+            ax4_acc.tick_params(axis='y', labelcolor='gray')
+
+        # Add legend for both lines
+        lines = line1 + line2
+        labels = [l.get_label() for l in lines]
+        ax4.legend(lines, labels, loc='upper left')
+
+        ax4.set_title('Velocity and Acceleration Profiles')
         ax4.grid(True, alpha=0.3)
 
         # Add overall title
         title = f'GFOLD Trajectory Analysis (Flight Time: {tf:.1f}s)'
         fig.suptitle(title, fontsize=16)
 
-        # Add shared colorbar with smaller height
-        cax = fig.add_axes([0.92, 0.55, 0.02, 0.329])
+        # Add shared colorbar positioned for the top row of subplots
+        cax = fig.add_axes([0.92, 0.6, 0.02, 0.3])
         sm = cm.ScalarMappable(norm=norm, cmap=cmap)
         sm.set_array(t)
         cbar = fig.colorbar(sm, cax=cax)
