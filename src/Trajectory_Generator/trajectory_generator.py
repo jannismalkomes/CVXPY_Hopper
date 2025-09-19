@@ -264,11 +264,17 @@ class GFOLDTrajectoryGenerator:
         obj_value = problem.solve(solver=cp.ECOS, verbose=True, feastol=5e-20)
         solve_time = time.time() - start_time
 
+        # Extract comprehensive solver statistics
+        solver_stats = self.extract_solver_stats(problem)
+        solver_stats['manual_solve_time'] = solve_time
+        self._problem3_stats = solver_stats
+
         # Package results
         result = {
             'status': problem.status,
             'objective_value': obj_value,
             'solve_time': solve_time,
+            'solver_stats': solver_stats,
             'flight_time': tf,
             'variables': {
                 'state': x.value if x.value is not None else None,
@@ -335,11 +341,17 @@ class GFOLDTrajectoryGenerator:
         obj_value = problem.solve(solver=cp.ECOS, verbose=True)
         solve_time = time.time() - start_time
 
+        # Extract comprehensive solver statistics
+        solver_stats = self.extract_solver_stats(problem)
+        solver_stats['manual_solve_time'] = solve_time
+        self._problem4_stats = solver_stats
+
         # Package results
         result = {
             'status': problem.status,
             'objective_value': obj_value,
             'solve_time': solve_time,
+            'solver_stats': solver_stats,
             'flight_time': tf,
             'variables': {
                 'state': x.value if x.value is not None else None,
@@ -484,6 +496,286 @@ class GFOLDTrajectoryGenerator:
             print(f"Error exporting trajectory data: {e}")
             return False
 
+    def extract_solver_stats(self, problem: cp.Problem) -> Dict[str, Any]:
+        """
+        Extract comprehensive solver statistics and optimization results.
+
+        Args:
+            problem: Solved CVXPY problem instance
+
+        Returns:
+            Dictionary containing all available solver statistics
+        """
+        stats = {}
+
+        # Basic problem information
+        stats['problem_status'] = problem.status
+        stats['optimal_value'] = problem.value
+        stats['is_dcp'] = problem.is_dcp()
+        stats['is_dpp'] = problem.is_dpp()
+        stats['is_dgp'] = problem.is_dgp()
+        stats['is_qp'] = problem.is_qp()
+
+        # Problem size information
+        try:
+            size_metrics = problem.size_metrics
+            stats['num_variables'] = getattr(size_metrics, 'num_scalar_variables',
+                                             getattr(size_metrics, 'num_scalar_vars', None))
+            stats['num_constraints'] = getattr(size_metrics, 'num_scalar_constraints',
+                                               getattr(size_metrics, 'num_scalar_constr', None))
+            stats['num_parameters'] = getattr(size_metrics, 'num_scalar_parameters',
+                                              getattr(size_metrics, 'num_scalar_params', None))
+
+            # Add all available size metrics
+            for attr in dir(size_metrics):
+                if not attr.startswith('_') and not callable(getattr(size_metrics, attr)):
+                    try:
+                        stats[f'size_{attr}'] = getattr(size_metrics, attr)
+                    except:
+                        pass
+        except Exception as e:
+            stats['size_metrics_error'] = str(e)
+
+        # Solver statistics (if available)
+        if hasattr(problem, 'solver_stats') and problem.solver_stats:
+            solver_stats = problem.solver_stats
+            stats['solver_name'] = solver_stats.solver_name if hasattr(
+                solver_stats, 'solver_name') else 'Unknown'
+            stats['num_iters'] = solver_stats.num_iters if hasattr(
+                solver_stats, 'num_iters') else None
+            stats['solve_time'] = solver_stats.solve_time if hasattr(
+                solver_stats, 'solve_time') else None
+            stats['setup_time'] = solver_stats.setup_time if hasattr(
+                solver_stats, 'setup_time') else None
+
+            # ECOS specific statistics
+            if hasattr(solver_stats, 'pcost'):
+                stats['primal_cost'] = solver_stats.pcost
+            if hasattr(solver_stats, 'dcost'):
+                stats['dual_cost'] = solver_stats.dcost
+            if hasattr(solver_stats, 'gap'):
+                stats['duality_gap'] = solver_stats.gap
+            if hasattr(solver_stats, 'pres'):
+                stats['primal_residual'] = solver_stats.pres
+            if hasattr(solver_stats, 'dres'):
+                stats['dual_residual'] = solver_stats.dres
+            if hasattr(solver_stats, 'exitflag'):
+                stats['exit_flag'] = solver_stats.exitflag
+            if hasattr(solver_stats, 'infostring'):
+                stats['info_string'] = solver_stats.infostring
+
+        # Extract all available attributes from solver_stats
+        if hasattr(problem, 'solver_stats') and problem.solver_stats:
+            for attr in dir(problem.solver_stats):
+                if not attr.startswith('_') and attr not in ['solver_name', 'num_iters', 'solve_time', 'setup_time']:
+                    try:
+                        value = getattr(problem.solver_stats, attr)
+                        if not callable(value):
+                            stats[f'solver_{attr}'] = value
+                    except:
+                        pass
+
+        return stats
+
+    def export_comprehensive_data(self, filename_base: str = "gfold_comprehensive") -> bool:
+        """
+        Export comprehensive optimization data including all solver statistics,
+        trajectory data, and optimization variables.
+
+        Args:
+            filename_base: Base filename for exports (will create multiple files)
+
+        Returns:
+            True if export successful, False otherwise
+        """
+        if self.last_solution is None:
+            print("No solution data available for comprehensive export!")
+            return False
+
+        try:
+            # Create results directory structure
+            os.makedirs('results/database', exist_ok=True)
+
+            # 1. Export solver statistics and optimization metadata
+            optimization_data = {}
+
+            # Problem 3 data (if available)
+            if hasattr(self, '_problem3_stats'):
+                optimization_data['problem3'] = self._problem3_stats
+
+            # Problem 4 data (if available)
+            if hasattr(self, '_problem4_stats'):
+                optimization_data['problem4'] = self._problem4_stats
+
+            # General optimization information
+            optimization_data['general'] = {
+                'algorithm': 'GFOLD Sequential (Problem 3 + Problem 4)',
+                'N_time_steps': self.N,
+                'flight_time': self.last_solution['flight_time'],
+                'total_solve_time': self.last_solution.get('total_solve_time', 0),
+                'fuel_consumed_kg': (self.params.m_wet - np.exp(self.last_solution['variables']['log_mass'][0, -1])) if self.last_solution['variables']['log_mass'] is not None else None,
+                'final_mass_kg': np.exp(self.last_solution['variables']['log_mass'][0, -1]) if self.last_solution['variables']['log_mass'] is not None else None,
+                'landing_error_m': np.linalg.norm(self.last_solution['final_position']) if 'final_position' in self.last_solution else None,
+                'final_velocity_magnitude': np.linalg.norm(self.last_solution['final_velocity']) if 'final_velocity' in self.last_solution else None
+            }
+
+            # Export optimization metadata to JSON-like CSV
+            opt_df = pd.json_normalize(optimization_data, sep='_')
+            opt_df.to_csv(
+                f'results/database/{filename_base}_optimization_stats.csv', index=False)
+
+            # 2. Export detailed trajectory data
+            if self.last_solution['variables']['state'] is not None:
+                x = self.last_solution['variables']['state']
+                u = self.last_solution['variables']['control']
+                z = self.last_solution['variables']['log_mass']
+                s = self.last_solution['variables']['thrust_slack']
+                time_vec = np.linspace(
+                    0, self.last_solution['flight_time'], self.N)
+
+                # Comprehensive trajectory data
+                detailed_data = {
+                    'time': time_vec,
+                    'pos_x_altitude': x[0, :],
+                    'pos_y_crossrange': x[1, :],
+                    'pos_z_downrange': x[2, :],
+                    'vel_x_altitude': x[3, :],
+                    'vel_y_crossrange': x[4, :],
+                    'vel_z_downrange': x[5, :],
+                    'control_x': u[0, :] if u is not None else np.zeros(self.N),
+                    'control_y': u[1, :] if u is not None else np.zeros(self.N),
+                    'control_z': u[2, :] if u is not None else np.zeros(self.N),
+                    'log_mass': z[0, :] if z is not None else np.zeros(self.N),
+                    'mass_kg': np.exp(z[0, :]) if z is not None else np.zeros(self.N),
+                    'thrust_slack': s[0, :] if s is not None else np.zeros(self.N),
+                    'thrust_magnitude': np.linalg.norm(u, axis=0) if u is not None else np.zeros(self.N),
+                    'velocity_magnitude': np.linalg.norm(x[3:6, :], axis=0),
+                    'position_magnitude': np.linalg.norm(x[0:3, :], axis=0),
+                    'fuel_consumed_kg': self.params.m_wet - (np.exp(z[0, :]) if z is not None else self.params.m_wet),
+                    'throttle_percentage': (np.linalg.norm(u, axis=0) / self.params.T_max * 100) if u is not None else np.zeros(self.N)
+                }
+
+                # Add acceleration data (u represents thrust acceleration in m/s²)
+                if u is not None:
+                    # Thrust acceleration components (from optimization variable u)
+                    # Thrust acceleration X (altitude)
+                    detailed_data['accel_thrust_x'] = u[0, :]
+                    # Thrust acceleration Y (cross-range)
+                    detailed_data['accel_thrust_y'] = u[1, :]
+                    # Thrust acceleration Z (down-range)
+                    detailed_data['accel_thrust_z'] = u[2, :]
+                    detailed_data['accel_thrust_magnitude'] = np.linalg.norm(
+                        u, axis=0)
+
+                    # Total acceleration (thrust + gravity)
+                    detailed_data['accel_total_x'] = u[0, :] + \
+                        self.params.g[0]  # Total acceleration X
+                    detailed_data['accel_total_y'] = u[1, :] + \
+                        self.params.g[1]  # Total acceleration Y
+                    detailed_data['accel_total_z'] = u[2, :] + \
+                        self.params.g[2]  # Total acceleration Z
+                    detailed_data['accel_total_magnitude'] = np.linalg.norm(
+                        u + self.params.g.reshape(-1, 1), axis=0)
+
+                    # Gravitational acceleration components (constant)
+                    detailed_data['accel_gravity_x'] = np.full(
+                        self.N, self.params.g[0])
+                    detailed_data['accel_gravity_y'] = np.full(
+                        self.N, self.params.g[1])
+                    detailed_data['accel_gravity_z'] = np.full(
+                        self.N, self.params.g[2])
+                    detailed_data['accel_gravity_magnitude'] = np.full(
+                        self.N, np.linalg.norm(self.params.g))
+
+                    # Acceleration in g-forces for engineering analysis
+                    g_magnitude = np.linalg.norm(self.params.g)
+                    detailed_data['accel_thrust_gforce'] = np.linalg.norm(
+                        u, axis=0) / g_magnitude
+                    detailed_data['accel_total_gforce'] = np.linalg.norm(
+                        u + self.params.g.reshape(-1, 1), axis=0) / g_magnitude
+                else:
+                    # Zero acceleration if no control data
+                    for accel_key in ['accel_thrust_x', 'accel_thrust_y', 'accel_thrust_z', 'accel_thrust_magnitude',
+                                      'accel_total_x', 'accel_total_y', 'accel_total_z', 'accel_total_magnitude',
+                                      'accel_gravity_x', 'accel_gravity_y', 'accel_gravity_z', 'accel_gravity_magnitude',
+                                      'accel_thrust_gforce', 'accel_total_gforce']:
+                        detailed_data[accel_key] = np.zeros(self.N)
+
+                # Create high-resolution interpolated data
+                t_highres = np.arange(
+                    0, self.last_solution['flight_time'], 0.01)
+                interp_data = {'time': t_highres}
+
+                for key, values in detailed_data.items():
+                    if key != 'time':
+                        f = interp1d(time_vec, values, kind='linear',
+                                     bounds_error=False, fill_value='extrapolate')
+                        interp_data[key] = f(t_highres)
+
+                # Export detailed trajectory data
+                detailed_df = pd.DataFrame(detailed_data)
+                detailed_df.to_csv(
+                    f'results/database/{filename_base}_detailed_trajectory.csv', index=False)
+
+                # Export high-resolution interpolated data
+                interp_df = pd.DataFrame(interp_data)
+                interp_df.to_csv(
+                    f'results/database/{filename_base}_interpolated_trajectory.csv', index=False)
+
+                # Export simplified trajectory data (position, velocity, acceleration only)
+                if u is not None:
+                    simplified_data = {
+                        'time': time_vec,
+                        'pos_x': x[0, :],  # Position X (altitude)
+                        'pos_y': x[1, :],  # Position Y (cross-range)
+                        'pos_z': x[2, :],  # Position Z (down-range)
+                        'vel_x': x[3, :],  # Velocity X (altitude)
+                        'vel_y': x[4, :],  # Velocity Y (cross-range)
+                        'vel_z': x[5, :],  # Velocity Z (down-range)
+                        # Total acceleration X
+                        'acc_x': u[0, :] + self.params.g[0],
+                        # Total acceleration Y
+                        'acc_y': u[1, :] + self.params.g[1],
+                        # Total acceleration Z
+                        'acc_z': u[2, :] + self.params.g[2]
+                    }
+
+                    # Create high-resolution simplified interpolated data
+                    simplified_interp_data = {'time': t_highres}
+                    for key, values in simplified_data.items():
+                        if key != 'time':
+                            f = interp1d(time_vec, values, kind='linear',
+                                         bounds_error=False, fill_value='extrapolate')
+                            simplified_interp_data[key] = f(t_highres)
+
+                    # Export simplified trajectory data
+                    simplified_df = pd.DataFrame(simplified_data)
+                    simplified_df.to_csv(
+                        f'results/database/{filename_base}_simple_trajectory.csv', index=False)
+
+                    # Export simplified high-resolution interpolated data
+                    simplified_interp_df = pd.DataFrame(simplified_interp_data)
+                    simplified_interp_df.to_csv(
+                        f'results/database/{filename_base}_simple_interpolated.csv', index=False)
+
+            print(f"✓ Comprehensive optimization data exported:")
+            print(
+                f"  - results/database/{filename_base}_optimization_stats.csv")
+            print(
+                f"  - results/database/{filename_base}_detailed_trajectory.csv")
+            print(
+                f"  - results/database/{filename_base}_interpolated_trajectory.csv")
+            print(
+                f"  - results/database/{filename_base}_simple_trajectory.csv")
+            print(
+                f"  - results/database/{filename_base}_simple_interpolated.csv")
+
+            return True
+
+        except Exception as e:
+            print(f"Error exporting comprehensive data: {e}")
+            return False
+
     def generate_plots(self) -> list:
         """
         Generate trajectory plots using the integrated plotting module.
@@ -592,14 +884,20 @@ if __name__ == "__main__":
             print(
                 f"  Velocity: [{final_vel[0]:.3f}, {final_vel[1]:.3f}, {final_vel[2]:.3f}] m/s")
 
-            # Export trajectory data and generate plots
+            # Export comprehensive optimization data
             print(f"\nExporting results...")
 
-            # Export CSV data
+            # Export basic trajectory data (backward compatibility)
             if generator.export_trajectory_data("gfold_trajectory.csv"):
-                print(f"✓ Trajectory data exported successfully")
+                print(f"✓ Basic trajectory data exported successfully")
             else:
-                print(f"✗ Failed to export trajectory data")
+                print(f"✗ Failed to export basic trajectory data")
+
+            # Export comprehensive data with all solver statistics
+            if generator.export_comprehensive_data("gfold_comprehensive"):
+                print(f"✓ Comprehensive optimization data exported successfully")
+            else:
+                print(f"✗ Failed to export comprehensive optimization data")
 
             # Generate trajectory plots
             print(f"\nGenerating trajectory plots...")
