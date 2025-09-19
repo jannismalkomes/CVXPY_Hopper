@@ -121,14 +121,16 @@ class TrajectoryPlotter:
                       [z_pos[i], z_pos[i+1]],
                       color=cmap(norm(t[i])), linewidth=2)
 
-        # Add start and end markers
+        # Add start and end markers (more subtle)
         start_color = 'lime' if dark_theme else 'green'
         end_color = 'red'
 
         ax.scatter([x_pos[0]], [y_pos[0]], [z_pos[0]],
-                   color=start_color, s=100, label='Start', marker='o')
+                   color=start_color, s=60, alpha=0.7, label='Start', marker='o',
+                   edgecolors='white', linewidth=0.5)
         ax.scatter([x_pos[-1]], [y_pos[-1]], [z_pos[-1]],
-                   color=end_color, s=100, label='Landing', marker='X')
+                   color=end_color, s=60, alpha=0.7, label='Landing', marker='X',
+                   edgecolors='white', linewidth=0.5)
 
         # Add surface plane (ground level)
         if z_pos.min() <= 0:
@@ -144,8 +146,6 @@ class TrajectoryPlotter:
         ax.set_zlabel('Altitude (m)')
 
         title = f'GFOLD 3D Trajectory (Flight Time: {tf:.1f}s)'
-        if dark_theme:
-            title += ' - Dark Theme'
         ax.set_title(title)
 
         ax.legend()
@@ -153,7 +153,7 @@ class TrajectoryPlotter:
         # Add colorbar for time
         sm = cm.ScalarMappable(norm=norm, cmap=cmap)
         sm.set_array(t)
-        cbar = fig.colorbar(sm, ax=ax, shrink=0.8)
+        cbar = fig.colorbar(sm, ax=ax, shrink=0.6)
         cbar.set_label("Time (s)")
 
         # Save plot
@@ -215,20 +215,21 @@ class TrajectoryPlotter:
             lc.set_linewidth(2)
             ax.add_collection(lc)
 
-            # Add start and end markers
+            # Add start and end markers (more subtle)
             start_color = 'lime' if dark_theme else 'green'
             end_color = 'red'
-            ax.scatter(coord1[0], coord2[0], color=start_color, s=80,
-                       label='Start', marker='o', zorder=5)
-            ax.scatter(coord1[-1], coord2[-1], color=end_color, s=80,
-                       label='Landing', marker='X', zorder=5)
+            ax.scatter(coord1[0], coord2[0], color=start_color, s=40, alpha=0.7,
+                       label='Start', marker='o', zorder=5, edgecolors='white', linewidth=0.5)
+            ax.scatter(coord1[-1], coord2[-1], color=end_color, s=40, alpha=0.7,
+                       label='Landing', marker='X', zorder=5, edgecolors='white', linewidth=0.5)
 
             ax.set_xlabel(label1)
             ax.set_ylabel(label2)
             ax.set_title(title)
             ax.grid(True, alpha=0.3)
             ax.legend()
-            ax.set_aspect('equal', adjustable='box')
+            # Use consistent aspect ratio for all subplots instead of equal
+            ax.set_aspect('auto')
 
         # XY plane (Down-range vs Cross-range)
         ax1 = fig.add_subplot(gs[0, 0])
@@ -260,12 +261,10 @@ class TrajectoryPlotter:
 
         # Add overall title
         title = f'GFOLD Trajectory Analysis (Flight Time: {tf:.1f}s)'
-        if dark_theme:
-            title += ' - Dark Theme'
         fig.suptitle(title, fontsize=16)
 
-        # Add shared colorbar
-        cax = fig.add_axes([0.92, 0.55, 0.02, 0.35])
+        # Add shared colorbar with smaller height
+        cax = fig.add_axes([0.92, 0.6, 0.02, 0.25])
         sm = cm.ScalarMappable(norm=norm, cmap=cmap)
         sm.set_array(t)
         cbar = fig.colorbar(sm, cax=cax)
