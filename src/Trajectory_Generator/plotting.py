@@ -4,7 +4,12 @@ GFOLD Trajectory Plotting Module
 This module provides comprehensive plotting functionality for GFOLD trajectory visualization.
 Includes both regular and dark theme variants for 3D trajectories and planar projections.
 
-Based on ARCHIVED_EvilPlotting_py3.py with modernizations for integration with trajectory_generator.py
+Based on ARCHIVED_EvilPlotting_py3.py with        # Add shared colorbar with medium height
+        cax = fig.add_axes([0.92, 0.5, 0.02, 0.35])
+        sm = cm.ScalarMappable(norm=norm, cmap=cmap)
+        sm.set_array(t)
+        cbar = fig.colorbar(sm, cax=cax)
+        cbar.set_label("Time (s)")nizations for integration with trajectory_generator.py
 """
 
 from typing import Tuple, Optional
@@ -153,7 +158,7 @@ class TrajectoryPlotter:
         # Add colorbar for time
         sm = cm.ScalarMappable(norm=norm, cmap=cmap)
         sm.set_array(t)
-        cbar = fig.colorbar(sm, ax=ax, shrink=0.6)
+        cbar = fig.colorbar(sm, ax=ax, shrink=0.5)
         cbar.set_label("Time (s)")
 
         # Save plot
@@ -264,7 +269,7 @@ class TrajectoryPlotter:
         fig.suptitle(title, fontsize=16)
 
         # Add shared colorbar with smaller height
-        cax = fig.add_axes([0.92, 0.6, 0.02, 0.25])
+        cax = fig.add_axes([0.92, 0.55, 0.02, 0.329])
         sm = cm.ScalarMappable(norm=norm, cmap=cmap)
         sm.set_array(t)
         cbar = fig.colorbar(sm, cax=cax)
