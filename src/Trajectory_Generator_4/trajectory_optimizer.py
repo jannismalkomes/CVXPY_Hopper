@@ -56,12 +56,12 @@ class HopperParameters:
         # Operational constraints
         # Maximum structural acceleration [g]
         self.G_max = 10
-        self.V_max = 90                      # Maximum velocity [m/s]
+        self.V_max = 20                      # Maximum velocity [m/s]
         self.y_gs = np.radians(30)          # Glide slope cone angle [rad]
         self.p_cs = np.radians(45)          # Thrust pointing constraint [rad]
 
         # Environmental parameters (Mars-like)
-        self.g = np.array([-3.71, 0, 0])    # Gravity vector [m/s²]
+        self.g = np.array([-9.80665, 0, 0])    # Gravity vector [m/s²]
         # Planetary angular velocity [rad/s]
         self.w = np.array([2.53e-5, 0, 6.62e-5])
 
@@ -123,7 +123,7 @@ class GFOLDTrajectoryGenerator:
             params: HopperParameters object. If None, default parameters are used.
         """
         self.params = params if params is not None else HopperParameters()
-        self.N = 120  # Number of discretization points
+        self.N = int(120)  # Number of discretization points
         self.dt = 0.1  # Time step [s]
 
         # Results storage
@@ -371,7 +371,7 @@ if __name__ == "__main__":
         #     (generator.params.alpha * generator.params.r1)
 
         # To be replaced with optimal flight time determination script
-        tf_opt = 20
+        tf_opt = 120
 
         # Set number of discretization points
         generator.N = int(tf_opt / generator.dt)

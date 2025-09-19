@@ -308,7 +308,7 @@ class TrajectoryPlotter:
         fig.suptitle(title, fontsize=16)
 
         # Add shared colorbar positioned for the top row of subplots
-        cax = fig.add_axes([0.92, 0.6, 0.02, 0.3])
+        cax = fig.add_axes([0.92, 0.55, 0.02, 0.329])
         sm = cm.ScalarMappable(norm=norm, cmap=cmap)
         sm.set_array(t)
         cbar = fig.colorbar(sm, cax=cax)
