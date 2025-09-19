@@ -20,6 +20,7 @@ Style: Following CVXPYgen code generation example pattern
 """
 
 import cvxpy as cp
+from cvxpygen import cpg
 import numpy as np
 import time
 import sys
@@ -46,7 +47,7 @@ class HopperParameters:
         self.m_wet = self.m_dry + self.m_fuel  # Total wet mass [kg]
 
         # Propulsion system parameters
-        self.T_max = 2000                    # Maximum thrust [N]
+        self.T_max = 4000                    # Maximum thrust [N]
         self.throt = [0.1, 1.0]             # Throttle range [min, max]
         self.Isp = 203.94                   # Specific impulse [s]
         self.alpha = 1 / (self.Isp * self.g0)  # Fuel consumption parameter
@@ -55,22 +56,23 @@ class HopperParameters:
 
         # Operational constraints
         # Maximum structural acceleration [g]
-        self.G_max = 10
-        self.V_max = 20                      # Maximum velocity [m/s]
+        self.G_max = 100
+        self.V_max = 200                      # Maximum velocity [m/s]
         self.y_gs = np.radians(30)          # Glide slope cone angle [rad]
-        self.p_cs = np.radians(45)          # Thrust pointing constraint [rad]
+        self.p_cs = np.radians(15)          # Thrust pointing constraint [rad]
 
         # Environmental parameters (Mars-like)
-        self.g = np.array([-9.80665, 0, 0])    # Gravity vector [m/s²]
+        self.g = np.array([-9.81, 0, 0])    # Gravity vector [m/s²]
         # Planetary angular velocity [rad/s]
         self.w = np.array([2.53e-5, 0, 6.62e-5])
 
-        # Mission parameters
-        self.r_initial = np.array([20, 5, 5])    # Initial position [m]
+        # Initial conditions
+        self.r_initial = np.array([0, 5, 5])    # Initial position [m]
         self.v_initial = np.array([0, 0, 0])     # Initial velocity [m/s]
+
+        # Target conditions
         self.r_target = np.array([0, 0, 0])      # Target landing position [m]
-        # Target landing velocity [m/s]
-        self.v_target = np.array([0, 0, 0])
+        self.v_target = np.array([0, 0, 0])     # Target landing velocity [m/s]
 
         # Derived parameters
         self._compute_derived_parameters()
@@ -86,8 +88,8 @@ class HopperParameters:
                              [w_vec[2], 0, -w_vec[0]],
                              [-w_vec[1], w_vec[0], 0]])
 
-        # Glide slope constraint vector
-        self.c = self.e(0) / np.tan(self.y_gs)
+        # # Glide slope constraint vector
+        # self.c = self.e(0) / np.tan(self.y_gs)
 
         # System matrices for dynamics
         self.A = np.zeros((6, 6))
@@ -104,6 +106,9 @@ class HopperParameters:
                           [1, 0, 0],
                           [0, 1, 0],
                           [0, 0, 1]])
+
+        self.A = cp.Parameter((6, 6), value=self.A)
+        self.B = cp.Parameter((6, 3), value=self.B)
 
 
 class GFOLDTrajectoryGenerator:
@@ -195,10 +200,10 @@ class GFOLDTrajectoryGenerator:
             constraints += [x[0:3, n+1] == x[0:3, n] +
                             (self.dt / 2) * (x[3:6, n+1] + x[3:6, n])]
 
-            # Glideslope constraint (keep within landing cone)
-            pos_diff = x[0:3, n] - self.params.r_target
-            constraints += [cp.norm(pos_diff[1:3]) <=
-                            self.params.c[0] * (x[0, n] - self.params.r_target[0])]
+            # # Glideslope constraint (keep within landing cone)
+            # pos_diff = x[0:3, n] - self.params.r_target
+            # constraints += [cp.norm(pos_diff[1:3]) <=
+            #                self.params.c[0] * (x[0, n] - self.params.r_target[0])]
 
             # Velocity magnitude constraint
             constraints += [cp.norm(x[3:6, n]) <= self.params.V_max]
@@ -269,6 +274,10 @@ class GFOLDTrajectoryGenerator:
         start_time = time.time()
         obj_value = problem.solve(solver=cp.ECOS, verbose=True)
         solve_time = time.time() - start_time
+
+        # # generate code
+        # code_dir = "code_export"
+        # cpg.generate_code(problem, code_dir=str(code_dir), solver='ECOS')
 
         # Extract comprehensive solver statistics
         solver_stats = self.data_exporter.extract_solver_stats(problem)
@@ -371,7 +380,7 @@ if __name__ == "__main__":
         #     (generator.params.alpha * generator.params.r1)
 
         # To be replaced with optimal flight time determination script
-        tf_opt = 120
+        tf_opt = 10
 
         # Set number of discretization points
         generator.N = int(tf_opt / generator.dt)
