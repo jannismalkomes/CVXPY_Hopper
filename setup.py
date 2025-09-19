@@ -10,6 +10,7 @@ setup(
         "cvxpy",
         "cvxpygen",
         "matplotlib",
-        "ipykernel"
+        "ipykernel",
+        "pandas"
     ]
 )

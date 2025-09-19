@@ -9,6 +9,12 @@ The implementation includes:
 - Problem 3: Minimum Landing Error (with roughly solved final time)
 - Problem 4: Minimum Fuel Use (with fixed landing point from P3)
 
+Dependencies:
+- cvxpy: Convex optimization framework
+- numpy: Numerical computing
+- scipy: Scientific computing (signal processing, interpolation)
+- pandas: Data manipulation and CSV export
+
 Author: Converted from ARCHIVED_GFOLD_Static_py3.py
 Style: Following CVXPYgen code generation example pattern
 """
@@ -21,14 +27,7 @@ import os
 from typing import Tuple, Optional, Dict, Any
 from scipy import signal
 from scipy.interpolate import interp1d
-
-# Optional imports for data export
-try:
-    import pandas as pd
-    HAS_PANDAS = True
-except ImportError:
-    HAS_PANDAS = False
-    print("Warning: pandas not available. CSV export will use basic numpy functionality.")
+import pandas as pd
 
 
 class HopperParameters:
@@ -472,26 +471,9 @@ class GFOLDTrajectoryGenerator:
             # Create directory if it doesn't exist
             os.makedirs('database/trajectories', exist_ok=True)
 
-            # Save trajectory data
-            if HAS_PANDAS:
-                # Use pandas for cleaner CSV output
-                df_interp = pd.DataFrame(interpolated_data)
-                df_interp.to_csv(
-                    f'database/trajectories/{filename}', index=False)
-            else:
-                # Use numpy for basic CSV output
-                header = "time,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z"
-                data_array = np.column_stack([
-                    interpolated_data['time'],
-                    interpolated_data['pos_x'],
-                    interpolated_data['pos_y'],
-                    interpolated_data['pos_z'],
-                    interpolated_data['vel_x'],
-                    interpolated_data['vel_y'],
-                    interpolated_data['vel_z']
-                ])
-                np.savetxt(f'database/trajectories/{filename}', data_array,
-                           delimiter=',', header=header, comments='')
+            # Save trajectory data using pandas
+            df_interp = pd.DataFrame(interpolated_data)
+            df_interp.to_csv(f'database/trajectories/{filename}', index=False)
 
             print(
                 f"Trajectory data exported to database/trajectories/{filename}")
