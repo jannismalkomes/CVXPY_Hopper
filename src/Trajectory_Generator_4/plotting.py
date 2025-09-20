@@ -211,7 +211,7 @@ class TrajectoryPlotter:
         # Color mapping for time
         norm = Normalize(vmin=t.min(), vmax=t.max())
         cmap = cm.plasma if dark_theme else cm.viridis
-        
+
         # Extract colors from colormap for consistent theming
         # Position: intermediate time (middle of trajectory)
         position_color = cmap(0.5)
@@ -418,6 +418,136 @@ class TrajectoryPlotter:
         # print(f"Saved trajectory planes plot to {filepath}")
         return filepath
 
+    def plot_thrust_analysis(self, x: np.ndarray, u: np.ndarray, m: np.ndarray,
+                             tf: float, dark_theme: bool = False,
+                             filename: Optional[str] = None) -> str:
+        """
+        Create thrust magnitude, vehicle mass, and thrust direction analysis plots.
+
+        Args:
+            x: State trajectory [6 x N]
+            u: Control trajectory [3 x N]
+            m: Mass trajectory [N]
+            tf: Flight time  
+            dark_theme: Use dark theme if True
+            filename: Custom filename (auto-generated if None)
+
+        Returns:
+            Path to saved plot file
+        """
+        t, x_pos, y_pos, z_pos, thrust_x, thrust_y, thrust_z = self._prepare_trajectory_data(
+            x, u, m, tf)
+
+        if dark_theme:
+            plt.style.use('dark_background')
+            theme_suffix = "_dark"
+        else:
+            plt.style.use('default')
+            theme_suffix = ""
+
+        # Create figure with subplots (reduced to 3 subplots)
+        fig = plt.figure(figsize=(16, 9))
+        gs = gridspec.GridSpec(2, 2, figure=fig, hspace=0.4, wspace=0.3,
+                               height_ratios=[1, 1])
+
+        # Calculate thrust magnitude and total thrust force
+        thrust_magnitude = np.sqrt(
+            u[0, :]**2 + u[1, :]**2 + u[2, :]**2)  # m/s²
+
+        # Calculate total thrust force in Newtons
+        g = 9.80665  # Gravitational acceleration (m/s²)
+        # Convert acceleration to force (N)
+        thrust_force = thrust_magnitude * m
+        # Total force including gravity (N)
+        total_thrust_force = (thrust_magnitude + g) * m
+
+        # Calculate gimbal angles from thrust direction
+        # For downward thrust (0, 0, -1), both angles should be 0
+        thrust_mag_nonzero = np.where(
+            thrust_magnitude > 1e-6, thrust_magnitude, 1)  # Avoid division by zero
+        thrust_dir_x = u[0, :] / thrust_mag_nonzero
+        thrust_dir_y = u[1, :] / thrust_mag_nonzero
+        thrust_dir_z = u[2, :] / thrust_mag_nonzero
+
+        # Calculate gimbal angles (in degrees) - corrected for z-up coordinate system
+        # For straight down thrust (0, 0, -1), angles should be 0
+        # X gimbal angle (pitch): angle from negative Z axis in X-Z plane
+        gimbal_angle_x = np.degrees(np.arctan2(
+            thrust_dir_x, np.abs(thrust_dir_z)))
+        # Y gimbal angle (roll): angle from negative Z axis in Y-Z plane
+        gimbal_angle_y = np.degrees(np.arctan2(
+            thrust_dir_y, np.abs(thrust_dir_z)))
+
+        # Color scheme
+        if dark_theme:
+            mass_color = 'orange'
+            thrust_color = 'lime'
+            magnitude_color = 'cyan'
+            gimbal_x_color = 'magenta'
+            gimbal_y_color = 'yellow'
+        else:
+            mass_color = 'red'
+            thrust_color = 'green'
+            magnitude_color = 'blue'
+            gimbal_x_color = 'purple'
+            gimbal_y_color = 'orange'
+
+        # Plot 1: Thrust Force and Magnitude (dual y-axis)
+        ax1 = fig.add_subplot(gs[0, 0])
+
+        # Primary y-axis: Thrust Force (N)
+        line1 = ax1.plot(t, thrust_force, linewidth=2, color=thrust_color)
+        ax1.set_xlabel('Time (s)')
+        ax1.set_ylabel('Thrust Force (N)', color=thrust_color)
+        ax1.tick_params(axis='y', labelcolor=thrust_color)
+        ax1.grid(True, alpha=0.3)
+
+        # Secondary y-axis: Thrust Magnitude (m/s²)
+        ax1_twin = ax1.twinx()
+        line2 = ax1_twin.plot(t, thrust_magnitude, linewidth=2, color=magnitude_color,
+                              linestyle='--')
+        ax1_twin.set_ylabel('Thrust Magnitude (m/s²)', color=magnitude_color)
+        ax1_twin.tick_params(axis='y', labelcolor=magnitude_color)
+
+        ax1.set_title('Thrust Force & Magnitude vs Time')
+
+        # Plot 2: Vehicle Mass
+        ax2 = fig.add_subplot(gs[0, 1])
+        ax2.plot(t, m, linewidth=2, color=mass_color)
+        ax2.set_xlabel('Time (s)')
+        ax2.set_ylabel('Mass (kg)')
+        ax2.set_title('Vehicle Mass vs Time')
+        ax2.grid(True, alpha=0.3)
+
+        # Plot 3: Thrust Gimbal Angles
+        ax3 = fig.add_subplot(gs[1, :])
+        ax3.plot(t, gimbal_angle_x, linewidth=2, color=gimbal_x_color,
+                 label='X Gimbal Angle (Pitch)', alpha=0.8)
+        ax3.plot(t, gimbal_angle_y, linewidth=2, color=gimbal_y_color,
+                 label='Y Gimbal Angle (Roll)', alpha=0.8)
+        ax3.axhline(y=0, color='gray', linestyle=':', alpha=0.5, linewidth=1)
+        ax3.set_xlabel('Time (s)')
+        ax3.set_ylabel('Gimbal Angle (degrees)')
+        ax3.set_title('Thrust Gimbal Angles vs Time (0° = Straight Down)')
+        ax3.grid(True, alpha=0.3)
+        ax3.legend()
+
+        # Add overall title
+        title = f'Thrust Analysis (Flight Time: {tf:.1f}s, Fuel Used: {m[0]-m[-1]:.1f}kg)'
+        fig.suptitle(title, fontsize=16, y=0.95)
+
+        # Save plot
+        if filename is None:
+            filename = f"gfold_thrust_analysis{theme_suffix}.png"
+
+        filepath = os.path.join(self.output_dir, filename)
+        plt.savefig(filepath, dpi=300, bbox_inches='tight',
+                    facecolor='black' if dark_theme else 'white')
+        plt.close()
+
+        # print(f"Saved thrust analysis plot to {filepath}")
+        return filepath
+
     def plot_all_trajectories(self, x: np.ndarray, u: np.ndarray, m: np.ndarray,
                               tf: float, gravity: Optional[np.ndarray] = None) -> list:
         """
@@ -443,6 +573,10 @@ class TrajectoryPlotter:
             x, u, m, tf, dark_theme=False, gravity=gravity))
         saved_files.append(self.plot_trajectory_planes(
             x, u, m, tf, dark_theme=True, gravity=gravity))
+        saved_files.append(self.plot_thrust_analysis(
+            x, u, m, tf, dark_theme=False))
+        saved_files.append(self.plot_thrust_analysis(
+            x, u, m, tf, dark_theme=True))
 
         # print(f"\nGenerated {len(saved_files)} trajectory plots:")
         # for filepath in saved_files:
