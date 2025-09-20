@@ -211,6 +211,17 @@ class TrajectoryPlotter:
         # Color mapping for time
         norm = Normalize(vmin=t.min(), vmax=t.max())
         cmap = cm.plasma if dark_theme else cm.viridis
+        
+        # Extract colors from colormap for consistent theming
+        # Position: intermediate time (middle of trajectory)
+        position_color = cmap(0.5)
+        # Velocity: same as position for better visibility
+        velocity_color = cmap(0.5)
+        # Acceleration: conditional based on theme
+        if dark_theme:
+            acceleration_color = cmap(1.0)  # Brightest color for dark theme
+        else:
+            acceleration_color = cmap(0.0)  # Darkest color for bright theme
 
         def plot_trajectory_projection(ax, coord1, coord2, label1, label2, title):
             """Helper function to plot trajectory projection."""
@@ -259,48 +270,45 @@ class TrajectoryPlotter:
         # X-component position over time
         ax_pos_x = fig.add_subplot(gs[1, 0])
         ax_pos_x.plot(t, x_pos, linewidth=2,
-                      color='green',
+                      color=position_color,
                       label='X Position')
         ax_pos_x.set_xlabel('Time (s)')
         ax_pos_x.set_ylabel('X Position (m)')
         ax_pos_x.set_title('X Position vs Time')
         ax_pos_x.grid(True, alpha=0.3)
-        ax_pos_x.legend()
 
         # Y-component position over time
         ax_pos_y = fig.add_subplot(gs[1, 1])
         ax_pos_y.plot(t, y_pos, linewidth=2,
-                      color='green',
+                      color=position_color,
                       label='Y Position')
         ax_pos_y.set_xlabel('Time (s)')
         ax_pos_y.set_ylabel('Y Position (m)')
         ax_pos_y.set_title('Y Position vs Time')
         ax_pos_y.grid(True, alpha=0.3)
-        ax_pos_y.legend()
 
         # Z-component position over time
         ax_pos_z = fig.add_subplot(gs[1, 2])
         ax_pos_z.plot(t, z_pos, linewidth=2,
-                      color='green',
+                      color=position_color,
                       label='Z Position (Altitude)')
         ax_pos_z.set_xlabel('Time (s)')
         ax_pos_z.set_ylabel('Z Position (m)')
         ax_pos_z.set_title('Z Position vs Time')
         ax_pos_z.grid(True, alpha=0.3)
-        ax_pos_z.legend()
 
         # X-component velocity and acceleration
         ax_x = fig.add_subplot(gs[2, 0])
 
         # Plot X velocity
         line_vx = ax_x.plot(t, x[3, :], linewidth=2,
-                            color='blue',
+                            color=velocity_color,
                             label='Velocity X')
         ax_x.set_xlabel('Time (s)')
         ax_x.set_ylabel('X Velocity (m/s)',
-                        color='blue')
+                        color=velocity_color)
         ax_x.tick_params(
-            axis='y', labelcolor='blue')
+            axis='y', labelcolor=velocity_color)
 
         # Create secondary y-axis for X acceleration
         ax_x_acc = ax_x.twinx()
@@ -311,12 +319,12 @@ class TrajectoryPlotter:
             acc_x = u[0, :] + g_vec[0]
 
             line_ax = ax_x_acc.plot(t, acc_x, linewidth=2,
-                                    color='red',
+                                    color=acceleration_color,
                                     label='Acceleration X', linestyle=':')
             ax_x_acc.set_ylabel('X Acceleration (m/s²)',
-                                color='red')
+                                color=acceleration_color)
             ax_x_acc.tick_params(
-                axis='y', labelcolor='red')
+                axis='y', labelcolor=acceleration_color)
             ax_x_acc.axhline(y=0, color='gray', linestyle=':',
                              alpha=0.5, linewidth=1)
 
@@ -328,13 +336,13 @@ class TrajectoryPlotter:
 
         # Plot Y velocity
         line_vy = ax_y.plot(t, x[4, :], linewidth=2,
-                            color='blue',
+                            color=velocity_color,
                             label='Velocity Y')
         ax_y.set_xlabel('Time (s)')
         ax_y.set_ylabel('Y Velocity (m/s)',
-                        color='blue')
+                        color=velocity_color)
         ax_y.tick_params(
-            axis='y', labelcolor='blue')
+            axis='y', labelcolor=velocity_color)
 
         # Create secondary y-axis for Y acceleration
         ax_y_acc = ax_y.twinx()
@@ -343,12 +351,12 @@ class TrajectoryPlotter:
             acc_y = u[1, :] + g_vec[1]
 
             line_ay = ax_y_acc.plot(t, acc_y, linewidth=2,
-                                    color='red',
+                                    color=acceleration_color,
                                     label='Acceleration Y', linestyle=':')
             ax_y_acc.set_ylabel('Y Acceleration (m/s²)',
-                                color='red')
+                                color=acceleration_color)
             ax_y_acc.tick_params(
-                axis='y', labelcolor='red')
+                axis='y', labelcolor=acceleration_color)
             ax_y_acc.axhline(y=0, color='gray', linestyle=':',
                              alpha=0.5, linewidth=1)
 
@@ -360,13 +368,13 @@ class TrajectoryPlotter:
 
         # Plot Z velocity
         line_vz = ax_z.plot(t, x[5, :], linewidth=2,
-                            color='blue',
+                            color=velocity_color,
                             label='Velocity Z')
         ax_z.set_xlabel('Time (s)')
         ax_z.set_ylabel('Z Velocity (m/s)',
-                        color='blue')
+                        color=velocity_color)
         ax_z.tick_params(
-            axis='y', labelcolor='blue')
+            axis='y', labelcolor=velocity_color)
 
         # Create secondary y-axis for Z acceleration
         ax_z_acc = ax_z.twinx()
@@ -375,12 +383,12 @@ class TrajectoryPlotter:
             acc_z = u[2, :] + g_vec[2]
 
             line_az = ax_z_acc.plot(t, acc_z, linewidth=2,
-                                    color='red',
+                                    color=acceleration_color,
                                     label='Acceleration Z', linestyle=':')
             ax_z_acc.set_ylabel('Z Acceleration (m/s²)',
-                                color='red')
+                                color=acceleration_color)
             ax_z_acc.tick_params(
-                axis='y', labelcolor='red')
+                axis='y', labelcolor=acceleration_color)
             ax_z_acc.axhline(y=0, color='gray', linestyle=':',
                              alpha=0.5, linewidth=1)
 
