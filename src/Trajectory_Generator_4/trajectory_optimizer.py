@@ -64,22 +64,17 @@ class HopperParameters:
         # Environmental parameters (Earth with z-up)
         # Gravity vector [m/s²] - z is down
         self.g = np.array([0, 0, -9.80665])
-        # Planetary angular velocity [rad/s] - updated for z-up coordinate system
-        # For Earth: rotation axis is approximately aligned with z-axis (North pole)
-        # Earth's rotation rate: 7.2921159e-5 rad/s
-        # Rotation about z-axis (vertical)
+        # Planetary angular velocity [rad/s], Earth's rotation rate: 7.2921159e-5 rad/s, Rotation about z-axis (vertical)
         self.w = np.array([0, 0, 7.2921159e-5])
 
         # Initial conditions
         # Initial position [x, y, z] where z is height
-        self.r_initial = np.array([0, 0, 10])
+        self.r_initial = np.array([0, 0, 1])
         self.v_initial = np.array([0, 0, 0])     # Initial velocity [m/s]
 
         # Target conditions
-        # Target landing position [x, y, z] where z=0 is ground
-        self.r_target = np.array([0, 0, 0])
-        # Target landing velocity [m/s]
-        self.v_target = np.array([0, 0, 0])
+        self.r_target = np.array([0, 0, 0])     # Target landing pos
+        self.v_target = np.array([0, 0, 0])     # Target landing vel
 
         # Derived parameters
         self._compute_derived_parameters()
@@ -391,7 +386,7 @@ if __name__ == "__main__":
         #     (generator.params.alpha * generator.params.r1)
 
         # To be replaced with optimal flight time determination script
-        tf_opt = 120
+        tf_opt = 110
 
         # Set number of discretization points
         generator.N = int(tf_opt / generator.dt)
