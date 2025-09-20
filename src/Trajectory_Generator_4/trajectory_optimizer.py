@@ -47,8 +47,8 @@ class HopperParameters:
         self.m_wet = self.m_dry + self.m_fuel  # Total wet mass [kg]
 
         # Propulsion system parameters
-        self.T_max = 2000                    # Maximum thrust [N]
-        self.throt = [0.1, 1.0]             # Throttle range [min, max]
+        self.T_max = 3800                    # Maximum thrust [N]
+        self.throt = [0.3, 1.0]             # Throttle range [min, max]
         self.Isp = 203.94                   # Specific impulse [s]
         self.alpha = 1 / (self.Isp * self.g0)  # Fuel consumption parameter
         self.r1 = self.throt[0] * self.T_max  # Lower thrust bound [N]
@@ -57,19 +57,19 @@ class HopperParameters:
         # Operational constraints
         # Maximum structural acceleration [g]
         self.G_max = 3
-        self.V_max = 5                      # Maximum velocity [m/s]
+        self.V_max = 0.5                      # Maximum velocity [m/s]
         self.y_gs = np.radians(30)          # Glide slope cone angle [rad]
-        self.p_cs = np.radians(45)          # Thrust pointing constraint [rad]
+        self.p_cs = np.radians(15)          # Thrust pointing constraint [rad]
 
         # Environmental parameters (Earth with z-up)
         # Gravity vector [m/s²] - z is down
-        self.g = np.array([0, 0, -9.80665])
+        self.g = np.array([0, 0, -self.g0])
         # Planetary angular velocity [rad/s], Earth's rotation rate: 7.2921159e-5 rad/s, Rotation about z-axis (vertical)
         self.w = np.array([0, 0, 7.2921159e-5])
 
         # Initial conditions
         # Initial position [x, y, z] where z is height
-        self.r_initial = np.array([0, 0, 1])
+        self.r_initial = np.array([0, 5, 10])
         self.v_initial = np.array([0, 0, 0])     # Initial velocity [m/s]
 
         # Target conditions
@@ -386,7 +386,7 @@ if __name__ == "__main__":
         #     (generator.params.alpha * generator.params.r1)
 
         # To be replaced with optimal flight time determination script
-        tf_opt = 110
+        tf_opt = 50
 
         # Set number of discretization points
         generator.N = int(tf_opt / generator.dt)
