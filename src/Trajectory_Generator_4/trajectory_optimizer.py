@@ -47,8 +47,8 @@ class HopperParameters:
         self.m_wet = self.m_dry + self.m_fuel  # Total wet mass [kg]
 
         # Propulsion system parameters
-        self.T_max = 3800                    # Maximum thrust [N]
-        self.throt = [0.3, 1.0]             # Throttle range [min, max]
+        self.T_max = 2000                    # Maximum thrust [N]
+        self.throt = [0.7, 1.0]             # Throttle range [min, max]
         self.Isp = 203.94                   # Specific impulse [s]
         self.alpha = 1 / (self.Isp * self.g0)  # Fuel consumption parameter
         self.r1 = self.throt[0] * self.T_max  # Lower thrust bound [N]
@@ -57,7 +57,7 @@ class HopperParameters:
         # Operational constraints
         # Maximum structural acceleration [g]
         self.G_max = 3
-        self.V_max = 0.5                      # Maximum velocity [m/s]
+        self.V_max = 1                     # Maximum velocity [m/s]
         self.y_gs = np.radians(30)          # Glide slope cone angle [rad]
         self.p_cs = np.radians(15)          # Thrust pointing constraint [rad]
 
@@ -74,7 +74,7 @@ class HopperParameters:
 
         # Target conditions
         self.r_target = np.array([0, 0, 0])     # Target landing pos
-        self.v_target = np.array([0, 0, 0])     # Target landing vel
+        self.v_target = np.array([0, 0, 0.3])     # Target landing vel
 
         # Derived parameters
         self._compute_derived_parameters()
@@ -182,8 +182,8 @@ class GFOLDTrajectoryGenerator:
         # Final conditions
         constraints += [x[3:6, self.N-1] ==
                         self.params.v_target]  # Final velocity
-        # No thrust at landing
-        constraints += [s[0, self.N-1] == 0]
+        # # No thrust at landing
+        # constraints += [s[0, self.N-1] == 0]
 
         # Initial and final thrust direction constraints
         # Initial thrust direction - thrust upward to counteract gravity
@@ -386,7 +386,7 @@ if __name__ == "__main__":
         #     (generator.params.alpha * generator.params.r1)
 
         # To be replaced with optimal flight time determination script
-        tf_opt = 50
+        tf_opt = 12
 
         # Set number of discretization points
         generator.N = int(tf_opt / generator.dt)
