@@ -48,7 +48,7 @@ class HopperParameters:
 
         # Propulsion system parameters
         self.T_max = 2000                    # Maximum thrust [N]
-        self.throt = [0.7, 1.0]             # Throttle range [min, max]
+        self.throt = [0.7, 1.0]            # Throttle range [min, max]
         self.Isp = 203.94                   # Specific impulse [s]
         self.alpha = 1 / (self.Isp * self.g0)  # Fuel consumption parameter
         self.r1 = self.throt[0] * self.T_max  # Lower thrust bound [N]
@@ -56,8 +56,8 @@ class HopperParameters:
 
         # Operational constraints
         # Maximum structural acceleration [g]
-        self.G_max = 1
-        self.V_max = 1                     # Maximum velocity [m/s]
+        self.G_max = 10
+        self.V_max = 10                     # Maximum velocity [m/s]
         self.y_gs = np.radians(30)          # Glide slope cone angle [rad]
         self.p_cs = np.radians(15)          # Thrust pointing constraint [rad]
 
@@ -69,7 +69,7 @@ class HopperParameters:
 
         # Initial conditions
         # Initial position [x, y, z] where z is height
-        self.r_initial = np.array([0, 5, 0])
+        self.r_initial = np.array([5, 5, 10])
         self.v_initial = np.array([0, 0, 0])     # Initial velocity [m/s]
 
         # Target conditions
@@ -234,8 +234,10 @@ class GFOLDTrajectoryGenerator:
 
             z0 = np.log(z0_term)
             z1 = np.log(z1_term)
+            mu_1 = self.params.r1 / z1_term
             mu_2 = self.params.r2 / z0_term
 
+            constraints += [s[0, n] >= mu_1 * (1 - (z[0, n] - z1))]
             constraints += [s[0, n] <= mu_2 * (1 - (z[0, n] - z0))]
             constraints += [z[0, n] >= z0]
             constraints += [z[0, n] <= z1]
@@ -414,7 +416,7 @@ if __name__ == "__main__":
         #     (generator.params.alpha * generator.params.r1)
 
         # To be replaced with optimal flight time determination script
-        tf_opt = 8
+        tf_opt = 7.4
 
         # Set number of discretization points
         generator.N = int(tf_opt / generator.dt)
