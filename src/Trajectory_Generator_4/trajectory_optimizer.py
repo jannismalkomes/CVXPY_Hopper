@@ -56,7 +56,7 @@ class HopperParameters:
 
         # Operational constraints
         # Maximum structural acceleration [g]
-        self.G_max = 3
+        self.G_max = 1
         self.V_max = 1                     # Maximum velocity [m/s]
         self.y_gs = np.radians(30)          # Glide slope cone angle [rad]
         self.p_cs = np.radians(15)          # Thrust pointing constraint [rad]
@@ -69,12 +69,12 @@ class HopperParameters:
 
         # Initial conditions
         # Initial position [x, y, z] where z is height
-        self.r_initial = np.array([0, 5, 10])
+        self.r_initial = np.array([0, 5, 0])
         self.v_initial = np.array([0, 0, 0])     # Initial velocity [m/s]
 
         # Target conditions
         self.r_target = np.array([0, 0, 0])     # Target landing pos
-        self.v_target = np.array([0, 0, 0.3])     # Target landing vel
+        self.v_target = np.array([0, 0, 0])     # Target landing vel
 
         # Derived parameters
         self._compute_derived_parameters()
@@ -202,11 +202,12 @@ class GFOLDTrajectoryGenerator:
             constraints += [x[0:3, n+1] == x[0:3, n] +
                             (self.dt / 2) * (x[3:6, n+1] + x[3:6, n])]
 
-            # # Glideslope constraint (keep within landing cone)
+            # Glideslope constraint (keep within landing cone)
             # # Changed to use z as height coordinate
             # pos_diff = x[0:3, n] - self.params.r_target
             # constraints += [cp.norm(pos_diff[0:2]) <=  # x,y components
-            #                np.tan(self.params.y_gs) * (x[2, n] - self.params.r_target[2])]  # z component
+            #                 # z component
+            #                 np.tan(self.params.y_gs) * (x[2, n] - self.params.r_target[2])]
 
             # Velocity magnitude constraint
             constraints += [cp.norm(x[3:6, n]) <= self.params.V_max]
@@ -222,17 +223,27 @@ class GFOLDTrajectoryGenerator:
             # Changed to z-component for upward thrust
             constraints += [u[2, n] >= np.cos(self.params.p_cs) * s[0, n]]
 
-            # Thrust bounds (convex approximation of mass-normalized thrust)
-            if n > 0:
-                z0_term = self.params.m_wet - self.params.alpha * self.params.r2 * n * self.dt
-                z1_term = self.params.m_wet - self.params.alpha * self.params.r1 * n * self.dt
-                z0 = np.log(z0_term)
-                z1 = np.log(z1_term)
-                mu_2 = self.params.r2 / z0_term
+        # Apply thrust bounds to ALL time steps (including first and last)
+        for n in range(self.N):
+            z0_term = self.params.m_wet - self.params.alpha * self.params.r2 * n * self.dt
+            z1_term = self.params.m_wet - self.params.alpha * self.params.r1 * n * self.dt
 
-                constraints += [s[0, n] <= mu_2 * (1 - (z[0, n] - z0))]
-                constraints += [z[0, n] >= z0]
-                constraints += [z[0, n] <= z1]
+            # Ensure positive mass terms
+            z0_term = max(z0_term, self.params.m_dry + 1e-6)
+            z1_term = max(z1_term, self.params.m_dry + 1e-6)
+
+            z0 = np.log(z0_term)
+            z1 = np.log(z1_term)
+            mu_2 = self.params.r2 / z0_term
+
+            constraints += [s[0, n] <= mu_2 * (1 - (z[0, n] - z0))]
+            constraints += [z[0, n] >= z0]
+            constraints += [z[0, n] <= z1]
+
+        # Apply thrust constraints to final step (N-1)
+        constraints += [cp.norm(u[:, self.N-1]) <= s[0, self.N-1]]
+        constraints += [u[2, self.N-1] >=
+                        np.cos(self.params.p_cs) * s[0, self.N-1]]
 
         # Altitude constraint (stay above surface except at landing)
         # Changed to z-coordinate for height
@@ -319,6 +330,23 @@ class GFOLDTrajectoryGenerator:
             print(f"Fuel consumed: {result['fuel_consumed']:.2f} kg")
             print(f"Final position [x, y, z]: {x.value[0:3, -1]}")
             print(f"Solve time: {solve_time:.3f} s")
+
+            # Check thrust forces throughout trajectory for constraint violations (internal validation)
+            thrust_forces = []
+            for k in range(self.N):
+                thrust_acc_mag = np.linalg.norm(u.value[:, k])
+                mass_at_k = mass_trajectory[k]
+                thrust_force = thrust_acc_mag * mass_at_k
+                thrust_forces.append(thrust_force)
+
+            max_thrust = max(thrust_forces)
+            # Store thrust analysis for internal use but don't print
+            result['thrust_analysis'] = {
+                'max_thrust': max_thrust,
+                'max_thrust_time': thrust_forces.index(max_thrust) * self.dt,
+                'thrust_limit': self.params.T_max,
+                'constraint_satisfied': max_thrust <= self.params.T_max
+            }
         else:
             print("Problem 4 failed to solve!")
 
@@ -386,7 +414,7 @@ if __name__ == "__main__":
         #     (generator.params.alpha * generator.params.r1)
 
         # To be replaced with optimal flight time determination script
-        tf_opt = 12
+        tf_opt = 8
 
         # Set number of discretization points
         generator.N = int(tf_opt / generator.dt)
