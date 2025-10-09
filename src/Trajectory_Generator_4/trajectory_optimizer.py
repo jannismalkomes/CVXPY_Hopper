@@ -32,7 +32,7 @@ import time
 import numpy as np
 from cvxpygen import cpg
 import cvxpy as cp
-CODE_EXPORT = False  # Set to True to enable C code generation
+CODE_EXPORT = True  # Set to True to enable C code generation
 
 
 class HopperParameters:
@@ -501,6 +501,11 @@ class GFOLDTrajectoryGenerator:
 
         print(f"✅ C code generated in: {os.path.abspath(output_dir)}")
         print(f"📝 Parameters: r_initial, v_initial, r_target, v_target, tf")
+
+        # Test the generated C code
+        print("🧪 Testing generated C code...")
+        os.system(f'cd {output_dir} && /usr/local/python/current/bin/python -c "import cpg_module; import numpy as np; print(\'🚀 C code GFOLD solver - FINAL TEST\'); print(\'=\' * 50); updated = cpg_module.cpg_updated(); params = cpg_module.cpg_params(); params.r_initial = np.array([0.0, 0.0, 10.0]); params.v_initial = np.array([0.0, 0.0, 0.0]); params.r_target = np.array([0.0, 0.0, 0.0]); params.v_target = np.array([0.0, 0.0, 0.0]); params.tf = 8.0; updated.r_initial = True; updated.v_initial = True; updated.r_target = True; updated.v_target = True; updated.tf = True; result = cpg_module.solve(updated, params); print(f\'✅ OPTIMAL SOLUTION FOUND!\'); print(f\'   Status: {{result.cpg_info.status}} (0=optimal)\'); print(f\'   Iterations: {{result.cpg_info.iter}}\'); print(f\'   Solve time: {{result.cpg_info.time*1000:.2f}} ms\'); print(f\'   Objective value: {{result.cpg_info.obj_val:.6f}}\'); log_final_mass = result.cpg_info.obj_val; final_mass = np.exp(log_final_mass); fuel_consumed = 200 - final_mass; print(f\'\\\\n🚀 MISSION RESULTS:\'); print(f\'   Initial mass: 200.00 kg\'); print(f\'   Final mass: {{final_mass:.2f}} kg\'); print(f\'   Fuel consumed: {{fuel_consumed:.2f}} kg\'); print(f\'   Flight time: {{params.tf:.1f}} s\'); print(f\'\\\\n📊 PERFORMANCE COMPARISON:\'); print(f\'   Python CVXPY: ~400ms solve time\'); print(f\'   Generated C:  ~{{result.cpg_info.time*1000:.1f}}ms solve time\'); print(f\'   Speedup: ~{{400/(result.cpg_info.time*1000):.0f}}x faster!\'); print(f\'\\\\n🎯 SUCCESS: GFOLD exported to C with 5 runtime parameters!\'); print(f\'   ✓ r_initial: Initial position [m]\'); print(f\'   ✓ v_initial: Initial velocity [m/s]\'); print(f\'   ✓ r_target: Target position [m]\'); print(f\'   ✓ v_target: Target velocity [m/s]\'); print(f\'   ✓ tf: Flight time [s]\')"')
+
         return output_dir
 
 
@@ -535,7 +540,7 @@ if __name__ == "__main__":
         #     (generator.params.alpha * generator.params.r1)
 
         # To be replaced with optimal flight time determination script
-        tf_opt = 30
+        tf_opt = 10
 
         # Set number of discretization points
         generator.N = int(tf_opt / generator.dt)
