@@ -69,7 +69,7 @@ class HopperParameters:
 
         # Initial conditions
         # Initial position [x, y, z] where z is height
-        self.r_initial = np.array([5, 5, 10])
+        self.r_initial = np.array([0, 0, 10])
         self.v_initial = np.array([0, 0, 0])     # Initial velocity [m/s]
 
         # Target conditions
@@ -416,7 +416,7 @@ if __name__ == "__main__":
         #     (generator.params.alpha * generator.params.r1)
 
         # To be replaced with optimal flight time determination script
-        tf_opt = 7.4
+        tf_opt = 8
 
         # Set number of discretization points
         generator.N = int(tf_opt / generator.dt)
