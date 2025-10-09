@@ -32,7 +32,7 @@ import time
 import numpy as np
 from cvxpygen import cpg
 import cvxpy as cp
-CODE_EXPORT = True  # Set to True to enable C code generation
+CODE_EXPORT = False  # Set to True to enable C code generation
 
 
 class HopperParameters:
@@ -535,7 +535,7 @@ if __name__ == "__main__":
         #     (generator.params.alpha * generator.params.r1)
 
         # To be replaced with optimal flight time determination script
-        tf_opt = 8
+        tf_opt = 30
 
         # Set number of discretization points
         generator.N = int(tf_opt / generator.dt)
