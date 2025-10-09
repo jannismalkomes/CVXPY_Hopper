@@ -19,18 +19,20 @@ Author: Converted from ARCHIVED_GFOLD_Static_py3.py
 Style: Following CVXPYgen code generation example pattern
 """
 
-import cvxpy as cp
-from cvxpygen import cpg
-import numpy as np
-import time
-import sys
-import os
-from typing import Tuple, Optional, Dict, Any
-from scipy import signal
-from scipy.interpolate import interp1d
-import pandas as pd
-from plotting import TrajectoryPlotter
+# Configuration flags
 from data_exporter import DataExporter
+from plotting import TrajectoryPlotter
+import pandas as pd
+from scipy.interpolate import interp1d
+from scipy import signal
+from typing import Tuple, Optional, Dict, Any
+import os
+import sys
+import time
+import numpy as np
+from cvxpygen import cpg
+import cvxpy as cp
+CODE_EXPORT = True  # Set to True to enable C code generation
 
 
 class HopperParameters:
@@ -384,6 +386,123 @@ class GFOLDTrajectoryGenerator:
             print(f"Error generating plots: {e}")
             return []
 
+    def create_parameterized_problem(self) -> cp.Problem:
+        """
+        Create a parameterized CVXPY problem for C code generation.
+
+        Returns:
+            CVXPY Problem with parameters for initial/final conditions and flight time
+        """
+        # Create optimization variables
+        x, u, z, s = self._create_optimization_variables()
+
+        # Create parameters for C code generation
+        r_initial_param = cp.Parameter(
+            3, value=self.params.r_initial, name='r_initial')
+        v_initial_param = cp.Parameter(
+            3, value=self.params.v_initial, name='v_initial')
+        r_target_param = cp.Parameter(
+            3, value=self.params.r_target, name='r_target')
+        v_target_param = cp.Parameter(
+            3, value=self.params.v_target, name='v_target')
+        tf_param = cp.Parameter(value=8.0, pos=True,
+                                name='tf')  # Default flight time
+
+        constraints = []
+
+        # Initial state conditions (use parameters)
+        constraints += [x[0:3, 0] == r_initial_param]  # Initial position
+        constraints += [x[3:6, 0] == v_initial_param]  # Initial velocity
+        # Final conditions
+        constraints += [x[3:6, self.N-1] == v_target_param]  # Final velocity
+        constraints += [x[0:3, self.N-1] == r_target_param]  # Final position
+
+        # Initial and final thrust direction constraints
+        constraints += [u[:, 0] == s[0, 0] * np.array([0, 0, 1])]
+        constraints += [u[:, self.N-1] == s[0, self.N-1] * np.array([0, 0, 1])]
+
+        # Initial mass constraint
+        constraints += [z[0, 0] == cp.log(self.params.m_wet)]
+
+        # Dynamic constraints for each time step (with parameterized time)
+        for n in range(self.N - 1):
+            dt_param = tf_param / (self.N - 1)
+
+            # Leapfrog integration for dynamics
+            constraints += [x[3:6, n+1] == x[3:6, n] +
+                            (dt_param / 2) * ((u[:, n] + self.params.g) + (u[:, n+1] + self.params.g))]
+            constraints += [x[0:3, n+1] == x[0:3, n] +
+                            (dt_param / 2) * (x[3:6, n+1] + x[3:6, n])]
+
+            # Velocity magnitude constraint
+            constraints += [cp.norm(x[3:6, n]) <= self.params.V_max]
+
+            # Mass decrease due to fuel consumption
+            constraints += [z[0, n+1] == z[0, n] -
+                            (self.params.alpha * dt_param / 2) * (s[0, n] + s[0, n+1])]
+
+            # Thrust magnitude constraint
+            constraints += [cp.norm(u[:, n]) <= s[0, n]]
+
+            # Thrust pointing constraint (thrust vector within cone)
+            constraints += [u[2, n] >= np.cos(self.params.p_cs) * s[0, n]]
+
+        # Apply thrust bounds to ALL time steps (with parameterized time)
+        for n in range(self.N):
+            dt_param = tf_param / (self.N - 1)
+            # Use fixed values for parameterized problem - thrust bounds will be enforced through constraints
+            m_at_t = self.params.m_wet - self.params.alpha * self.params.r2 * n * dt_param
+
+            # For parameterized problems, use simplified thrust bounds
+            z0 = cp.log(m_at_t)
+            z1 = cp.log(m_at_t)
+
+            # Thrust bounds
+            constraints += [s[0, n] >= self.params.r1 /
+                            self.params.m_wet]  # Lower bound
+            constraints += [s[0, n] <= self.params.r2 /
+                            self.params.m_dry]  # Upper bound
+            constraints += [z[0, n] >= cp.log(self.params.m_dry)]
+            constraints += [z[0, n] <= cp.log(self.params.m_wet)]
+
+        # Apply thrust constraints to final step (N-1)
+        constraints += [cp.norm(u[:, self.N-1]) <= s[0, self.N-1]]
+        constraints += [u[2, self.N-1] >=
+                        np.cos(self.params.p_cs) * s[0, self.N-1]]
+
+        # Altitude constraint (stay above surface except at landing)
+        constraints += [x[2, 0:self.N-1] >= 0]
+
+        # Define objective: maximize final mass (minimize fuel consumption)
+        objective = cp.Maximize(z[0, self.N-1])
+
+        # Create problem
+        problem = cp.Problem(objective, constraints)
+        return problem
+
+    def export_c_code(self, output_dir: str = "code_export") -> str:
+        """
+        Export the GFOLD trajectory generator as C code.
+
+        Args:
+            output_dir: Directory for C code output
+
+        Returns:
+            Path to generated C code directory
+        """
+        print("🚀 Exporting GFOLD Trajectory Generator to C code...")
+
+        # Create parameterized problem
+        problem = self.create_parameterized_problem()
+
+        # Generate C code
+        os.makedirs(output_dir, exist_ok=True)
+        cpg.generate_code(problem, code_dir=output_dir, solver='ECOS')
+
+        print(f"✅ C code generated in: {os.path.abspath(output_dir)}")
+        print(f"📝 Parameters: r_initial, v_initial, r_target, v_target, tf")
+        return output_dir
+
 
 if __name__ == "__main__":
     """
@@ -429,6 +548,10 @@ if __name__ == "__main__":
         generator.data_exporter.export_problem4_data(
             results, filename_prefix="gfold_problem4"
         )
+
+        # Export C code if flag is enabled
+        if CODE_EXPORT:
+            generator.export_c_code()
 
     finally:
         # Restore original working directory
