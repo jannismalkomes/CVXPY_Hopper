@@ -77,6 +77,60 @@ int main(int argc, char *argv[]){
   // Solve the problem instance
   cpg_solve();
 
+  // Export solver status information (machine-readable format)
+  const char* status_msg;
+  int is_feasible = 0;
+  switch(CPG_Result.info->status) {
+    case 0:
+      status_msg = "OPTIMAL";
+      is_feasible = 1;
+      break;
+    case 1:
+      status_msg = "PRIMAL_INFEASIBLE";
+      is_feasible = 0;
+      break;
+    case 2:
+      status_msg = "DUAL_INFEASIBLE";
+      is_feasible = 0;
+      break;
+    case 10:
+      status_msg = "OPTIMAL_INACCURATE";
+      is_feasible = 1;
+      break;
+    case 11:
+      status_msg = "PRIMAL_INFEASIBLE_INACCURATE";
+      is_feasible = 0;
+      break;
+    case 12:
+      status_msg = "DUAL_INFEASIBLE_INACCURATE";
+      is_feasible = 0;
+      break;
+    case -1:
+      status_msg = "MAX_ITERS";
+      is_feasible = 0;
+      break;
+    case -2:
+      status_msg = "NUMERICAL_PROBLEMS";
+      is_feasible = 0;
+      break;
+    case -3:
+      status_msg = "INTERRUPTED";
+      is_feasible = 0;
+      break;
+    default:
+      status_msg = "UNKNOWN";
+      is_feasible = 0;
+      break;
+  }
+  
+  // Output feasibility and status (parseable format)
+  printf("feasible = %s\n", is_feasible ? "true" : "false");
+  printf("status_code = %d\n", CPG_Result.info->status);
+  printf("status_message = %s\n", status_msg);
+  printf("iterations = %d\n", CPG_Result.info->iter);
+  printf("primal_residual = %.6e\n", CPG_Result.info->pri_res);
+  printf("dual_residual = %.6e\n", CPG_Result.info->dua_res);
+
   // Print objective function value
   printf("obj = %f\n", CPG_Result.info->obj_val);
 

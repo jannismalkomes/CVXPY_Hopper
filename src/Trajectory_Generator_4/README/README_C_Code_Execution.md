@@ -16,8 +16,17 @@ make cpg_example
 ```
 
 ### Step 1: Execute the C solver
+
+From executable folder:
+
 ```bash
 ./cpg_example --r_initial 0 0 5 --v_initial 0 0 0 --r_target 0 0 0 --v_target 0 0 0 --tf 12 > out.txt
+```
+
+Or from high level python script path:
+
+```bash
+./c/build/cpg_example --r_initial 0 0 5 --v_initial 0 0 0 --r_target 0 0 0 --v_target 0 0 0 --tf 12 > ./c/build/out.txt
 ```
 
 ### Step 2: Plot the trajectory
