@@ -12,12 +12,67 @@ static int i;
 
 int main(int argc, char *argv[]){
 
-  // Update first entry of every user-defined parameter
-  cpg_update_r_initial(0, 0.00000000000000000000);
-  cpg_update_v_initial(0, 0.00000000000000000000);
-  cpg_update_v_target(0, 0.00000000000000000000);
-  cpg_update_r_target(0, 0.00000000000000000000);
-  cpg_update_tf(8.00000000000000000000);
+  // Default values
+  double r_initial[3] = {0.0, 0.0, 10.0};  // Default: start at 10m altitude
+  double v_initial[3] = {0.0, 0.0, 0.0};   // Default: zero velocity
+  double r_target[3] = {0.0, 0.0, 0.0};    // Default: land at origin
+  double v_target[3] = {0.0, 0.0, 0.0};    // Default: zero velocity
+  double tf = 8.0;
+
+  // Parse arguments
+  for (int i = 1; i < argc; i++) {
+      if (strcmp(argv[i], "--r_initial") == 0 && i + 3 < argc) {
+          r_initial[0] = atof(argv[++i]);
+          r_initial[1] = atof(argv[++i]);
+          r_initial[2] = atof(argv[++i]);
+      }
+      else if (strcmp(argv[i], "--v_initial") == 0 && i + 3 < argc) {
+          v_initial[0] = atof(argv[++i]);
+          v_initial[1] = atof(argv[++i]);
+          v_initial[2] = atof(argv[++i]);
+      }
+      else if (strcmp(argv[i], "--r_target") == 0 && i + 3 < argc) {
+          r_target[0] = atof(argv[++i]);
+          r_target[1] = atof(argv[++i]);
+          r_target[2] = atof(argv[++i]);
+      }
+      else if (strcmp(argv[i], "--v_target") == 0 && i + 3 < argc) {
+          v_target[0] = atof(argv[++i]);
+          v_target[1] = atof(argv[++i]);
+          v_target[2] = atof(argv[++i]);
+      }
+      else if (strcmp(argv[i], "--tf") == 0 && i + 1 < argc) {
+          tf = atof(argv[++i]);
+      }
+    }
+
+  // Display current parameters
+  printf("🚀 GFOLD C Solver - Parameters:\n");
+  printf("================================\n");
+  printf("Initial position: [%.2f, %.2f, %.2f] m\n", r_initial[0], r_initial[1], r_initial[2]);
+  printf("Initial velocity: [%.2f, %.2f, %.2f] m/s\n", v_initial[0], v_initial[1], v_initial[2]);
+  printf("Target position:  [%.2f, %.2f, %.2f] m\n", r_target[0], r_target[1], r_target[2]);
+  printf("Target velocity:  [%.2f, %.2f, %.2f] m/s\n", v_target[0], v_target[1], v_target[2]);
+  printf("Flight time:      %.2f s\n\n", tf);
+
+  // Update parameters in the solver
+  cpg_update_r_initial(0, r_initial[0]);
+  cpg_update_r_initial(1, r_initial[1]);
+  cpg_update_r_initial(2, r_initial[2]);
+  
+  cpg_update_v_initial(0, v_initial[0]);
+  cpg_update_v_initial(1, v_initial[1]);
+  cpg_update_v_initial(2, v_initial[2]);
+  
+  cpg_update_r_target(0, r_target[0]);
+  cpg_update_r_target(1, r_target[1]);
+  cpg_update_r_target(2, r_target[2]);
+  
+  cpg_update_v_target(0, v_target[0]);
+  cpg_update_v_target(1, v_target[1]);
+  cpg_update_v_target(2, v_target[2]);
+    
+  cpg_update_tf(tf);
 
   // Solve the problem instance
   cpg_solve();
