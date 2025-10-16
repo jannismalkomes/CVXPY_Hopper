@@ -49,6 +49,9 @@ Or from high level python script path:
 - `--tf TIME` - Flight time [s]
 - `--v_max VEL` - Maximum velocity [m/s] (default: 10)
 - `--g_max ACC` - Maximum acceleration [g] (default: 10)
+- `--feastol TOL` - Feasibility tolerance (default: 1e-8)
+- `--abstol TOL` - Absolute tolerance (default: 1e-8)
+- `--reltol TOL` - Relative tolerance (default: 1e-8)
 
 ### Step 2: Plot the trajectory
 ```bash
@@ -78,6 +81,12 @@ python plot_trajectory.py
 
 # High altitude descent with relaxed limits
 ./cpg_example --r_initial 0 0 20 --r_target 0 0 0 --tf 15 --v_max 15 --g_max 15 > out.txt
+
+# Fast solve with relaxed tolerances (2-3x speedup, minimal accuracy loss)
+./cpg_example --r_initial 0 0 10 --r_target 0 0 0 --tf 12 --feastol 1e-6 --abstol 1e-6 --reltol 1e-6 > out.txt
+
+# Very fast solve with aggressive tolerances (5x speedup, for real-time control)
+./cpg_example --r_initial 0 0 10 --r_target 0 0 0 --tf 12 --feastol 1e-4 --abstol 1e-4 --reltol 1e-4 > out.txt
 ```
 
 ## 📁 Files Generated

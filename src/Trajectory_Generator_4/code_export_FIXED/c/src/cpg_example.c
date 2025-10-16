@@ -5,6 +5,7 @@ Content: Example program for updating parameters, solving, and inspecting the re
 */
 
 #include <stdio.h>
+#include <string.h>
 #include "cpg_workspace.h"
 #include "cpg_solve.h"
 
@@ -20,6 +21,11 @@ int main(int argc, char *argv[]){
   double tf = 8.0;
   double v_max = 10.0;  // Default: 10 m/s max velocity
   double g_max = 10.0;  // Default: 10 g max acceleration
+  
+  // Solver tolerance settings (defaults from ECOS)
+  double feastol = 1e-8;  // Feasibility tolerance
+  double abstol = 1e-8;   // Absolute tolerance
+  double reltol = 1e-8;   // Relative tolerance
 
   // Parse arguments
   for (int i = 1; i < argc; i++) {
@@ -52,6 +58,15 @@ int main(int argc, char *argv[]){
       else if (strcmp(argv[i], "--g_max") == 0 && i + 1 < argc) {
           g_max = atof(argv[++i]);
       }
+      else if (strcmp(argv[i], "--feastol") == 0 && i + 1 < argc) {
+          feastol = atof(argv[++i]);
+      }
+      else if (strcmp(argv[i], "--abstol") == 0 && i + 1 < argc) {
+          abstol = atof(argv[++i]);
+      }
+      else if (strcmp(argv[i], "--reltol") == 0 && i + 1 < argc) {
+          reltol = atof(argv[++i]);
+      }
     }
 
   // Display current parameters
@@ -63,7 +78,11 @@ int main(int argc, char *argv[]){
   printf("Target velocity:  [%.2f, %.2f, %.2f] m/s\n", v_target[0], v_target[1], v_target[2]);
   printf("Flight time:      %.2f s\n", tf);
   printf("Max velocity:     %.2f m/s\n", v_max);
-  printf("Max acceleration: %.2f g\n\n", g_max);
+  printf("Max acceleration: %.2f g\n", g_max);
+  printf("Solver tolerances:\n");
+  printf("  feastol:        %.2e\n", feastol);
+  printf("  abstol:         %.2e\n", abstol);
+  printf("  reltol:         %.2e\n\n", reltol);
 
   // Update parameters in the solver
   cpg_update_r_initial(0, r_initial[0]);
@@ -85,6 +104,12 @@ int main(int argc, char *argv[]){
   cpg_update_tf(tf);
   cpg_update_v_max(v_max);
   cpg_update_g_max(g_max);
+
+  // Set solver tolerances
+  cpg_set_solver_default_settings();
+  cpg_set_solver_feastol(feastol);
+  cpg_set_solver_abstol(abstol);
+  cpg_set_solver_reltol(reltol);
 
   // Solve the problem instance
   cpg_solve();
