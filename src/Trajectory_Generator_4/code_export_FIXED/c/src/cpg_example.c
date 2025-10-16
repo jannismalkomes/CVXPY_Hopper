@@ -165,6 +165,7 @@ int main(int argc, char *argv[]){
   printf("status_code = %d\n", CPG_Result.info->status);
   printf("status_message = %s\n", status_msg);
   printf("iterations = %d\n", CPG_Result.info->iter);
+  printf("solve_time = %.6f ms\n", ecos_workspace->info->tsolve * 1000.0);
   printf("primal_residual = %.6e\n", CPG_Result.info->pri_res);
   printf("dual_residual = %.6e\n", CPG_Result.info->dua_res);
 
