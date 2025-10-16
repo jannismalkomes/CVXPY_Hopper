@@ -213,19 +213,33 @@ def plot_trajectories(data):
     """
     Create plots for mass, thrust, and height trajectories.
     """
+    # Set dark mode style
+    plt.style.use('dark_background')
+
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-    fig.suptitle('GFOLD Trajectory Analysis', fontsize=16, fontweight='bold')
+    fig.suptitle('GFOLD Trajectory Analysis', fontsize=16,
+                 fontweight='bold', color='white')
+
+    # Set dark background for the figure
+    fig.patch.set_facecolor('#1e1e1e')
 
     time = data['time']
 
     # Plot 1: Mass trajectory
     ax1 = axes[0, 0]
-    ax1.plot(time, data['mass'], 'b-', linewidth=2, label='Spacecraft Mass')
-    ax1.set_xlabel('Time [s]')
-    ax1.set_ylabel('Mass [kg]')
-    ax1.set_title('Mass Trajectory (Fuel Consumption)')
-    ax1.grid(True, alpha=0.3)
-    ax1.legend()
+    ax1.set_facecolor('#2d2d2d')
+    ax1.plot(time, data['mass'], color='#60a5fa',
+             linewidth=2, label='Spacecraft Mass')
+    ax1.set_xlabel('Time [s]', color='white')
+    ax1.set_ylabel('Mass [kg]', color='white')
+    ax1.set_title('Mass Trajectory (Fuel Consumption)', color='white')
+    ax1.grid(True, alpha=0.2, color='gray')
+    ax1.legend(facecolor='#2d2d2d', edgecolor='gray')
+    ax1.tick_params(colors='white')
+    ax1.spines['bottom'].set_color('gray')
+    ax1.spines['top'].set_color('gray')
+    ax1.spines['left'].set_color('gray')
+    ax1.spines['right'].set_color('gray')
 
     # Add fuel consumption annotation
     initial_mass = data['mass'][0]
@@ -233,62 +247,84 @@ def plot_trajectories(data):
     fuel_used = initial_mass - final_mass
     ax1.text(0.7, 0.95, f'Fuel used: {fuel_used:.2f} kg\n({fuel_used/initial_mass*100:.1f}% of initial)',
              transform=ax1.transAxes, bbox=dict(
-                 boxstyle="round,pad=0.3", facecolor="lightblue"),
-             verticalalignment='top')
+                 boxstyle="round,pad=0.3", facecolor="#3b82f6", edgecolor='white', linewidth=1),
+             verticalalignment='top', color='white')
 
     # Plot 2: Height trajectory
     ax2 = axes[0, 1]
-    ax2.plot(time, data['height'], 'g-', linewidth=2, label='Altitude')
-    ax2.set_xlabel('Time [s]')
-    ax2.set_ylabel('Height [m]')
-    ax2.set_title('Altitude Profile')
-    ax2.grid(True, alpha=0.3)
-    ax2.legend()
-    ax2.axhline(y=0, color='r', linestyle='--',
-                alpha=0.5, label='Ground level')
+    ax2.set_facecolor('#2d2d2d')
+    ax2.plot(time, data['height'], color='#34d399',
+             linewidth=2, label='Altitude')
+    ax2.set_xlabel('Time [s]', color='white')
+    ax2.set_ylabel('Height [m]', color='white')
+    ax2.set_title('Altitude Profile', color='white')
+    ax2.grid(True, alpha=0.2, color='gray')
+    ax2.legend(facecolor='#2d2d2d', edgecolor='gray')
+    ax2.axhline(y=0, color='#ef4444', linestyle='--',
+                alpha=0.7, label='Ground level')
+    ax2.tick_params(colors='white')
+    ax2.spines['bottom'].set_color('gray')
+    ax2.spines['top'].set_color('gray')
+    ax2.spines['left'].set_color('gray')
+    ax2.spines['right'].set_color('gray')
 
     # Plot 3: Thrust magnitude
     ax3 = axes[1, 0]
-    ax3.plot(time, data['thrust_magnitude'], 'r-',
+    ax3.set_facecolor('#2d2d2d')
+    ax3.plot(time, data['thrust_magnitude'], color='#f87171',
              linewidth=2, label='Total Thrust')
-    ax3.plot(time, data['thrust_z'], 'orange', linewidth=2,
+    ax3.plot(time, data['thrust_z'], color='#fb923c', linewidth=2,
              linestyle='--', label='Vertical Thrust')
-    ax3.set_xlabel('Time [s]')
-    ax3.set_ylabel('Thrust [N]')
-    ax3.set_title('Thrust Profile')
-    ax3.grid(True, alpha=0.3)
-    ax3.legend()
+    ax3.set_xlabel('Time [s]', color='white')
+    ax3.set_ylabel('Thrust [N]', color='white')
+    ax3.set_title('Thrust Profile', color='white')
+    ax3.grid(True, alpha=0.2, color='gray')
+    ax3.legend(facecolor='#2d2d2d', edgecolor='gray')
+    ax3.tick_params(colors='white')
+    ax3.spines['bottom'].set_color('gray')
+    ax3.spines['top'].set_color('gray')
+    ax3.spines['left'].set_color('gray')
+    ax3.spines['right'].set_color('gray')
 
     # Add thrust statistics
     avg_thrust = np.mean(data['thrust_magnitude'])
     max_thrust = np.max(data['thrust_magnitude'])
     ax3.text(0.7, 0.95, f'Avg thrust: {avg_thrust:.1f} N\nMax thrust: {max_thrust:.1f} N',
              transform=ax3.transAxes, bbox=dict(
-                 boxstyle="round,pad=0.3", facecolor="lightyellow"),
-             verticalalignment='top')
+                 boxstyle="round,pad=0.3", facecolor="#f59e0b", edgecolor='white', linewidth=1),
+             verticalalignment='top', color='white')
 
     # Plot 4: Velocity trajectory (using actual solver velocities, NO post-processing)
     ax4 = axes[1, 1]
-    ax4.plot(time, data['velocity'][:, 0], 'r-', linewidth=2, label='Vel X')
-    ax4.plot(time, data['velocity'][:, 1], 'g-', linewidth=2, label='Vel Y')
-    ax4.plot(time, data['velocity'][:, 2], 'b-', linewidth=2, label='Vel Z')
-    ax4.set_xlabel('Time [s]')
-    ax4.set_ylabel('Velocity [m/s]')
-    ax4.set_title('Velocity Components (Solver Output)')
-    ax4.grid(True, alpha=0.3)
-    ax4.legend()
+    ax4.set_facecolor('#2d2d2d')
+    ax4.plot(time, data['velocity'][:, 0],
+             color='#f87171', linewidth=2, label='Vel X')
+    ax4.plot(time, data['velocity'][:, 1],
+             color='#34d399', linewidth=2, label='Vel Y')
+    ax4.plot(time, data['velocity'][:, 2],
+             color='#60a5fa', linewidth=2, label='Vel Z')
+    ax4.set_xlabel('Time [s]', color='white')
+    ax4.set_ylabel('Velocity [m/s]', color='white')
+    ax4.set_title('Velocity Components (Solver Output)', color='white')
+    ax4.grid(True, alpha=0.2, color='gray')
+    ax4.legend(facecolor='#2d2d2d', edgecolor='gray')
+    ax4.tick_params(colors='white')
+    ax4.spines['bottom'].set_color('gray')
+    ax4.spines['top'].set_color('gray')
+    ax4.spines['left'].set_color('gray')
+    ax4.spines['right'].set_color('gray')
 
     # Add velocity constraint warnings
     max_vel = np.max(np.linalg.norm(data['velocity'], axis=1))
     if max_vel > 20.0:  # Reasonable velocity limit for landing
         ax4.text(0.05, 0.95, f'⚠️ HIGH VELOCITY\nMax: {max_vel:.1f} m/s',
                  transform=ax4.transAxes, bbox=dict(
-                     boxstyle="round,pad=0.3", facecolor="red", alpha=0.7),
+                     boxstyle="round,pad=0.3", facecolor="#dc2626", edgecolor='white', linewidth=1.5),
                  verticalalignment='top', color='white', fontweight='bold')
     elif max_vel > 5.0:
         ax4.text(0.05, 0.95, f'⚡ Velocity OK\nMax: {max_vel:.1f} m/s',
                  transform=ax4.transAxes, bbox=dict(
-                     boxstyle="round,pad=0.3", facecolor="orange", alpha=0.7),
+                     boxstyle="round,pad=0.3", facecolor="#f59e0b", edgecolor='white', linewidth=1.5),
                  verticalalignment='top', color='white')
 
     plt.tight_layout()

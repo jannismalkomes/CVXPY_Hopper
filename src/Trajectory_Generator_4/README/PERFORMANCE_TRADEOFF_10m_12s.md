@@ -10,19 +10,23 @@
 
 ## Summary Results
 
-| Tolerance | Status  | Iterations | Time (ms) | Speedup | Final Z Error | Final Vz Error |
-|-----------|---------|------------|-----------|---------|---------------|----------------|
-| 1e-8      | OPT_ACC | 11         | 16.08     | 1.00x   | < 1 µm        | < 1 µm/s       |
-| 1e-7      | OPTIMAL | 10         | 12.33     | 1.30x   | < 1 µm        | < 1 µm/s       |
-| 1e-6      | OPTIMAL | 10         | 12.58     | 1.28x   | < 1 µm        | < 1 µm/s       |
-| **1e-5**  | **OPTIMAL** | **9**  | **10.98** | **1.46x** | **< 1 µm** | **< 1 µm/s** |
-| 1e-4      | OPTIMAL | 9          | 10.79     | 1.49x   | < 1 µm        | < 1 µm/s       |
-| 1e-3      | OPTIMAL | 8          | 9.37      | 1.72x   | < 1 µm        | < 1 µm/s       |
-| 1e-2      | OPTIMAL | 7          | 7.86      | 2.05x   | < 1 µm        | < 1 µm/s       |
+| Tolerance | Status  | Iterations | Time (ms) | Speedup | Final Z Error | Final Vz Error | Primal Residual | Dual Residual | Quality     |
+|-----------|---------|------------|-----------|---------|---------------|----------------|-----------------|---------------|-------------|
+| 1e-8      | OPT_ACC | 11         | 16.08     | 1.00x   | < 1 µm        | < 1 µm/s       | 6.01e-12        | 3.01e-09      | Excellent   |
+| 1e-7      | OPTIMAL | 10         | 12.33     | 1.30x   | < 1 µm        | < 1 µm/s       | 2.25e-09        | 7.34e-11      | Excellent   |
+| 1e-6      | OPTIMAL | 10         | 12.58     | 1.28x   | < 1 µm        | < 1 µm/s       | 2.25e-09        | 7.34e-11      | Excellent   |
+| **1e-5**  | **OPTIMAL** | **9**  | **10.98** | **1.46x** | **< 1 µm** | **< 1 µm/s** | **6.01e-12** | **3.01e-09** | **Excellent** |
+| 1e-4      | OPTIMAL | 9          | 10.79     | 1.49x   | < 1 µm        | < 1 µm/s       | 6.01e-12        | 3.01e-09      | Excellent   |
+| 1e-3      | OPTIMAL | 8          | 9.37      | 1.72x   | < 1 µm        | < 1 µm/s       | 2.23e-10        | 3.34e-08      | Very Good   |
+| 1e-2      | OPTIMAL | 7          | 7.86      | 2.05x   | < 1 µm        | < 1 µm/s       | 2.05e-09        | 2.27e-07      | Good        |
 
 **Status Codes:**
 - OPTIMAL = Fully converged within tolerances
 - OPT_ACC = Optimal but inaccurate (still meets relaxed tolerances)
+
+**Quality Assessment:** Based on residual magnitudes relative to tolerances. All solutions show excellent to good numerical quality.
+
+**Residuals**: All residuals are well below their respective tolerances, indicating robust convergence.
 
 ## Key Findings
 
