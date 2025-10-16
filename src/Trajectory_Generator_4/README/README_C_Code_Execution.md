@@ -29,16 +29,12 @@ cd /workspaces/CVXPY_Hopper/src/Trajectory_Generator_4/code_export_1_modified/c/
 
 ### Step 1: Execute the C solver
 
-From executable folder:
-
 ```bash
-./cpg_example --r_initial 0 0 5 --v_initial 0 0 0 --r_target 0 0 0 --v_target 0 0 0 --tf 12 --v_max 10 --g_max 10 > out.txt
-```
+# From executable folder
+cd /workspaces/CVXPY_Hopper/src/Trajectory_Generator_4/code_export_FIXED/c/build && ./cpg_example --r_initial 0 0 10 --v_initial 0 0 0 --r_target 0 0 0 --v_target 0 0 0 --tf 12 --v_max 10 --g_max 10
 
-Or from high level python script path:
-
-```bash
-./c/build/cpg_example --r_initial 0 0 5 --v_initial 0 0 0 --r_target 0 0 0 --v_target 0 0 0 --tf 12 --v_max 10 --g_max 10 > ./c/build/out.txt
+# Or from project root
+cd /workspaces/CVXPY_Hopper/src/Trajectory_Generator_4/code_export_FIXED && ./c/build/cpg_example --r_initial 0 0 10 --v_initial 0 0 0 --r_target 0 0 0 --v_target 0 0 0 --tf 12 --v_max 10 --g_max 10
 ```
 
 **Parameters:**
