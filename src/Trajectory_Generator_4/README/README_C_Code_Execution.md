@@ -31,10 +31,10 @@ cd /workspaces/CVXPY_Hopper/src/Trajectory_Generator_4/code_export_1_modified/c/
 
 ```bash
 # From executable folder
-cd /workspaces/CVXPY_Hopper/src/Trajectory_Generator_4/code_export_FIXED/c/build && ./cpg_example --r_initial 0 0 10 --v_initial 0 0 0 --r_target 0 0 0 --v_target 0 0 0 --tf 12 --v_max 10 --g_max 10
+cd /workspaces/CVXPY_Hopper/src/Trajectory_Generator_4/code_export_FIXED/c/build && ./cpg_example --r_initial 0 0 10 --v_initial 0 0 0 --r_target 0 0 0 --v_target 0 0 0 --tf 12 --v_max 10 --g_max 10 --feastol 1e-4 --abstol 1e-4 --reltol 1e-4 > out.txt
 
 # Or from project root
-cd /workspaces/CVXPY_Hopper/src/Trajectory_Generator_4/code_export_FIXED && ./c/build/cpg_example --r_initial 0 0 10 --v_initial 0 0 0 --r_target 0 0 0 --v_target 0 0 0 --tf 12 --v_max 10 --g_max 10
+cd /workspaces/CVXPY_Hopper/src/Trajectory_Generator_4/code_export_FIXED && ./c/build/cpg_example --r_initial 0 0 10 --v_initial 0 0 0 --r_target 0 0 0 --v_target 0 0 0 --tf 12 --v_max 10 --g_max 10 --feastol 1e-4 --abstol 1e-4 --reltol 1e-4 > out.txt
 ```
 
 **Parameters:**
