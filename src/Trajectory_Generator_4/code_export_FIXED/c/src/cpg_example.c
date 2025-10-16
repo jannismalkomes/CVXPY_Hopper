@@ -6,6 +6,7 @@ Content: Example program for updating parameters, solving, and inspecting the re
 
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include "cpg_workspace.h"
 #include "cpg_solve.h"
 
@@ -113,6 +114,128 @@ int main(int argc, char *argv[]){
 
   // Solve the problem instance
   cpg_solve();
+
+  // ========== CSV OUTPUT GENERATION ==========
+  
+  // Write solver info CSV
+  FILE *solver_csv = fopen("solver_info.csv", "w");
+  if (solver_csv != NULL) {
+    fprintf(solver_csv, "# GFOLD Solver Information\n");
+    fprintf(solver_csv, "parameter,value\n");
+    fprintf(solver_csv, "r_initial_x,%.6f\n", r_initial[0]);
+    fprintf(solver_csv, "r_initial_y,%.6f\n", r_initial[1]);
+    fprintf(solver_csv, "r_initial_z,%.6f\n", r_initial[2]);
+    fprintf(solver_csv, "v_initial_x,%.6f\n", v_initial[0]);
+    fprintf(solver_csv, "v_initial_y,%.6f\n", v_initial[1]);
+    fprintf(solver_csv, "v_initial_z,%.6f\n", v_initial[2]);
+    fprintf(solver_csv, "r_target_x,%.6f\n", r_target[0]);
+    fprintf(solver_csv, "r_target_y,%.6f\n", r_target[1]);
+    fprintf(solver_csv, "r_target_z,%.6f\n", r_target[2]);
+    fprintf(solver_csv, "v_target_x,%.6f\n", v_target[0]);
+    fprintf(solver_csv, "v_target_y,%.6f\n", v_target[1]);
+    fprintf(solver_csv, "v_target_z,%.6f\n", v_target[2]);
+    fprintf(solver_csv, "flight_time,%.6f\n", tf);
+    fprintf(solver_csv, "v_max,%.6f\n", v_max);
+    fprintf(solver_csv, "g_max,%.6f\n", g_max);
+    fprintf(solver_csv, "feastol,%.2e\n", feastol);
+    fprintf(solver_csv, "abstol,%.2e\n", abstol);
+    fprintf(solver_csv, "reltol,%.2e\n", reltol);
+    fclose(solver_csv);
+  }
+  
+  // Write trajectory CSV
+  FILE *traj_csv = fopen("trajectory.csv", "w");
+  if (traj_csv != NULL) {
+    // Calculate dt from flight time
+    double dt = tf / 119.0;  // 120 points, 119 intervals
+    
+    // Write header
+    fprintf(traj_csv, "time,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,accel_x,accel_y,accel_z,euler_x,euler_y,euler_z,thrust_force_x,thrust_force_y,thrust_force_z,thrust_force_mag,thrust_slack,mass\n");
+    
+    // Write data for each time step
+    for(i=0; i<120; i++) {
+      double t = i * dt;
+      double mass = exp(CPG_Result.prim->log_mass[i]);
+      
+      // Position (state is 6D per time step: 3 pos + 3 vel)
+      double pos_x = CPG_Result.prim->state[i*6 + 0];
+      double pos_y = CPG_Result.prim->state[i*6 + 1];
+      double pos_z = CPG_Result.prim->state[i*6 + 2];
+      
+      // Velocity
+      double vel_x = CPG_Result.prim->state[i*6 + 3];
+      double vel_y = CPG_Result.prim->state[i*6 + 4];
+      double vel_z = CPG_Result.prim->state[i*6 + 5];
+      
+      // Thrust acceleration [m/s²] (control is 3D per time step)
+      double accel_x = CPG_Result.prim->control[i*3 + 0];
+      double accel_y = CPG_Result.prim->control[i*3 + 1];
+      double accel_z = CPG_Result.prim->control[i*3 + 2];
+      
+      // Thrust force [N] = thrust acceleration [m/s²] × mass [kg]
+      double thrust_x = accel_x * mass;
+      double thrust_y = accel_y * mass;
+      double thrust_z = accel_z * mass;
+      
+      // Thrust magnitude [N]
+      double thrust_mag = sqrt(thrust_x*thrust_x + thrust_y*thrust_y + thrust_z*thrust_z);
+      
+      // Euler angles [rad] - orientation to point thrust in correct direction
+      // Assuming rocket body frame has Z-axis as thrust direction (up)
+      // Thrust vector direction = normalized thrust
+      double euler_x = 0.0;  // Roll around X (rotation about X-axis)
+      double euler_y = 0.0;  // Pitch around Y (rotation about Y-axis)
+      double euler_z = 0.0;  // Yaw around Z (rotation about Z-axis)
+      
+      if (thrust_mag > 1e-6) {  // Avoid division by zero
+        // Normalized thrust direction
+        double tx_norm = thrust_x / thrust_mag;
+        double ty_norm = thrust_y / thrust_mag;
+        double tz_norm = thrust_z / thrust_mag;
+        
+        // Euler angles to rotate from body frame (0,0,1) to thrust direction
+        // Pitch (rotation around Y-axis) - tilt in XZ plane
+        euler_y = atan2(tx_norm, tz_norm);
+        
+        // Roll (rotation around X-axis) - tilt in YZ plane
+        euler_x = atan2(-ty_norm, sqrt(tx_norm*tx_norm + tz_norm*tz_norm));
+        
+        // Yaw (rotation around Z-axis) - for this simple case, can be zero
+        // or computed from projection onto XY plane
+        euler_z = atan2(ty_norm, tx_norm);
+      }
+      
+      // Thrust slack
+      double thrust_slack = CPG_Result.prim->thrust_slack[i];
+      
+      fprintf(traj_csv, "%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n",
+              t, pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, accel_x, accel_y, accel_z, euler_x, euler_y, euler_z,
+              thrust_x, thrust_y, thrust_z, thrust_mag, thrust_slack, mass);
+    }
+    
+    fclose(traj_csv);
+  }
+  
+  // Update solver_info.csv with results (append mode)
+  solver_csv = fopen("solver_info.csv", "a");
+  if (solver_csv != NULL) {
+    // Determine feasibility based on status code
+    const char* feasible_str = "false";
+    if (CPG_Result.info->status == 0 || CPG_Result.info->status == 10) {
+      feasible_str = "true";  // OPTIMAL or OPTIMAL_INACCURATE
+    }
+    
+    fprintf(solver_csv, "status_code,%d\n", CPG_Result.info->status);
+    fprintf(solver_csv, "feasible,%s\n", feasible_str);
+    fprintf(solver_csv, "iterations,%d\n", CPG_Result.info->iter);
+    fprintf(solver_csv, "solve_time_ms,%.6f\n", ecos_workspace->info->tsolve * 1000.0);
+    fprintf(solver_csv, "primal_residual,%.6e\n", CPG_Result.info->pri_res);
+    fprintf(solver_csv, "dual_residual,%.6e\n", CPG_Result.info->dua_res);
+    fprintf(solver_csv, "objective,%.6f\n", CPG_Result.info->obj_val);
+    fclose(solver_csv);
+  }
+
+  // ========== END CSV OUTPUT ==========
 
   // Export solver status information (machine-readable format)
   const char* status_msg;
