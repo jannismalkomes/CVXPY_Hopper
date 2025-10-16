@@ -32,7 +32,7 @@ import time
 import numpy as np
 from cvxpygen import cpg
 import cvxpy as cp
-CODE_EXPORT = True  # Set to True to enable C code generation
+CODE_EXPORT = False  # Set to True to enable C code generation
 
 
 class HopperParameters:
@@ -132,7 +132,7 @@ class GFOLDTrajectoryGenerator:
             params: HopperParameters object. If None, default parameters are used.
         """
         self.params = params if params is not None else HopperParameters()
-        self.N = int(120)  # Number of discretization points
+        self.N = int(100)  # Number of discretization points
         self.dt = 0.1  # Time step [s]
 
         # Results storage
@@ -213,6 +213,12 @@ class GFOLDTrajectoryGenerator:
 
             # Velocity magnitude constraint
             constraints += [cp.norm(x[3:6, n]) <= self.params.V_max]
+
+            # Acceleration magnitude constraint (total acceleration = thrust + gravity)
+            # Total acceleration in G's: ||u + g|| / g0 <= G_max
+            # Rearranged: ||u + g|| <= G_max * g0
+            constraints += [cp.norm(u[:, n] + self.params.g)
+                            <= self.params.G_max * self.params.g0]
 
             # Mass decrease due to fuel consumption
             constraints += [z[0, n+1] == z[0, n] -
@@ -407,6 +413,10 @@ class GFOLDTrajectoryGenerator:
             3, value=self.params.v_target, name='v_target')
         tf_param = cp.Parameter(value=8.0, pos=True,
                                 name='tf')  # Default flight time
+        v_max_param = cp.Parameter(value=self.params.V_max, pos=True,
+                                   name='v_max')  # Maximum velocity [m/s]
+        g_max_param = cp.Parameter(value=self.params.G_max, pos=True,
+                                   name='g_max')  # Maximum acceleration [g]
 
         constraints = []
 
@@ -435,7 +445,13 @@ class GFOLDTrajectoryGenerator:
                             (dt_param / 2) * (x[3:6, n+1] + x[3:6, n])]
 
             # Velocity magnitude constraint
-            constraints += [cp.norm(x[3:6, n]) <= self.params.V_max]
+            constraints += [cp.norm(x[3:6, n]) <= v_max_param]
+
+            # Acceleration magnitude constraint (total acceleration = thrust + gravity)
+            # Total acceleration in G's: ||u + g|| / g0 <= g_max
+            # Rearranged: ||u + g|| <= g_max * g0
+            constraints += [cp.norm(u[:, n] + self.params.g)
+                            <= g_max_param * self.params.g0]
 
             # Mass decrease due to fuel consumption
             constraints += [z[0, n+1] == z[0, n] -
@@ -448,22 +464,27 @@ class GFOLDTrajectoryGenerator:
             constraints += [u[2, n] >= np.cos(self.params.p_cs) * s[0, n]]
 
         # Apply thrust bounds to ALL time steps (with parameterized time)
+        # CRITICAL: Use same linearization as solve_problem_4 to ensure C code matches Python
         for n in range(self.N):
-            dt_param = tf_param / (self.N - 1)
-            # Use fixed values for parameterized problem - thrust bounds will be enforced through constraints
-            m_at_t = self.params.m_wet - self.params.alpha * self.params.r2 * n * dt_param
+            # Use SAME linearization approach as in solve_problem_4
+            # This ensures the C code and Python code have identical constraints
+            z0_term = self.params.m_wet - self.params.alpha * self.params.r2 * n * self.dt
+            z1_term = self.params.m_wet - self.params.alpha * self.params.r1 * n * self.dt
 
-            # For parameterized problems, use simplified thrust bounds
-            z0 = cp.log(m_at_t)
-            z1 = cp.log(m_at_t)
+            # Ensure positive mass terms
+            z0_term = max(z0_term, self.params.m_dry + 1e-6)
+            z1_term = max(z1_term, self.params.m_dry + 1e-6)
 
-            # Thrust bounds
-            constraints += [s[0, n] >= self.params.r1 /
-                            self.params.m_wet]  # Lower bound
-            constraints += [s[0, n] <= self.params.r2 /
-                            self.params.m_dry]  # Upper bound
-            constraints += [z[0, n] >= cp.log(self.params.m_dry)]
-            constraints += [z[0, n] <= cp.log(self.params.m_wet)]
+            z0 = np.log(z0_term)
+            z1 = np.log(z1_term)
+            mu_1 = self.params.r1 / z1_term
+            mu_2 = self.params.r2 / z0_term
+
+            # Linearized thrust bounds (same as solve_problem_4)
+            constraints += [s[0, n] >= mu_1 * (1 - (z[0, n] - z1))]
+            constraints += [s[0, n] <= mu_2 * (1 - (z[0, n] - z0))]
+            constraints += [z[0, n] >= z0]
+            constraints += [z[0, n] <= z1]
 
         # Apply thrust constraints to final step (N-1)
         constraints += [cp.norm(u[:, self.N-1]) <= s[0, self.N-1]]
@@ -500,7 +521,7 @@ class GFOLDTrajectoryGenerator:
         cpg.generate_code(problem, code_dir=output_dir, solver='ECOS')
 
         print(f"✅ C code generated in: {os.path.abspath(output_dir)}")
-        print(f"📝 Parameters: r_initial, v_initial, r_target, v_target, tf")
+        print(f"📝 Parameters: r_initial, v_initial, r_target, v_target, tf, v_max, g_max")
 
         # Test the generated C code
         print("🧪 Testing generated C code...")
@@ -540,7 +561,7 @@ if __name__ == "__main__":
         #     (generator.params.alpha * generator.params.r1)
 
         # To be replaced with optimal flight time determination script
-        tf_opt = 10
+        tf_opt = 8
 
         # Set number of discretization points
         generator.N = int(tf_opt / generator.dt)
